@@ -32,9 +32,6 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Lockfile when using a different package manager (this repo uses yarn.lock)
-package-lock.json
-
 # Caches
 .cache/
 .eslintcache
