@@ -16,6 +16,9 @@ Define as regras do MVP para autenticacao por CPF+senha e onboarding de motorist
 8. Todo documento enviado e versionado por `(driverId, type, version)` e historico anterior nao pode ser alterado.
 9. Toda aprovacao, rejeicao e bloqueio exige motivo registrado em `driver_approval_reviews` e `admin_actions_audit`.
 10. Upload de documento deve respeitar whitelist de mime types e limite de tamanho.
+11. Admin utiliza fluxo dedicado de autenticacao e nao compartilha endpoint de login com motorista/cliente.
+12. Tokens de admin devem conter claim `role=admin` para acesso a rotas `admin/*`.
+13. No MVP nao existe RBAC granular para admin: qualquer admin autenticado tem acesso total ao escopo administrativo.
 
 ## Invariantes
 

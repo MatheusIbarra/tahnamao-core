@@ -14,7 +14,12 @@ import * as argon2 from 'argon2';
 import { DriverDocument } from '../../../drivers/infrastructure/mongo/schemas/driver.schema';
 import { DriverStatus } from '../../../drivers/domain/driver.enums';
 import { AuthUserType, LoginDocumentType } from '../../domain/auth.enums';
-import { LoginDto, RefreshTokenDto, SetDriverPasswordDto } from '../dto/auth.dto';
+import {
+  AdminLoginDto,
+  LoginDto,
+  RefreshTokenDto,
+  SetDriverPasswordDto,
+} from '../dto/auth.dto';
 import { AuthAccountDocument } from '../../infrastructure/mongo/schemas/auth-account.schema';
 import { AuthRefreshTokenDocument } from '../../infrastructure/mongo/schemas/auth-refresh-token.schema';
 import { normalizeCpf, isValidCpf } from '../../../../shared/domain/utils/cpf.util';
@@ -29,6 +34,13 @@ export interface AuthenticatedRequestUser {
   userId: string;
   userType: AuthUserType;
   driverStatus: DriverStatus;
+  scopes: string[];
+}
+
+export interface AuthenticatedAdminUser {
+  userId: string;
+  userType: AuthUserType;
+  role: 'admin';
   scopes: string[];
 }
 
@@ -101,7 +113,14 @@ export class AuthService {
   async login(dto: LoginDto, context: LoginContext): Promise<{ accessToken: string; refreshToken: string }> {
     const cpfNormalized = normalizeCpf(dto.cpf);
     if (!isValidCpf(cpfNormalized)) {
-      await this.registerLoginAttempt(cpfNormalized, false, 'CPF_INVALID_FORMAT', context);
+      await this.registerLoginAttempt({
+        userType: AuthUserType.DRIVER,
+        loginDocumentType: LoginDocumentType.CPF,
+        loginDocumentValue: cpfNormalized,
+        success: false,
+        reason: 'CPF_INVALID_FORMAT',
+        context,
+      });
       throw new BadRequestException('invalid CPF');
     }
 
@@ -112,23 +131,54 @@ export class AuthService {
     });
 
     if (!account || account.disabledAt) {
-      await this.registerLoginAttempt(cpfNormalized, false, 'ACCOUNT_NOT_FOUND', context);
+      await this.registerLoginAttempt({
+        userType: AuthUserType.DRIVER,
+        loginDocumentType: LoginDocumentType.CPF,
+        loginDocumentValue: cpfNormalized,
+        success: false,
+        reason: 'ACCOUNT_NOT_FOUND',
+        context,
+      });
       throw new UnauthorizedException('invalid credentials');
     }
 
     if (account.lockedUntil && account.lockedUntil.getTime() > Date.now()) {
-      await this.registerLoginAttempt(cpfNormalized, false, 'ACCOUNT_TEMPORARILY_LOCKED', context, account.userId);
+      await this.registerLoginAttempt({
+        userType: AuthUserType.DRIVER,
+        loginDocumentType: LoginDocumentType.CPF,
+        loginDocumentValue: cpfNormalized,
+        success: false,
+        reason: 'ACCOUNT_TEMPORARILY_LOCKED',
+        context,
+        userId: account.userId,
+      });
       throw new UnauthorizedException('account temporarily locked');
     }
 
     const driver = await this.driverModel.findById(account.userId);
     if (!driver || driver.deletedAt) {
-      await this.registerLoginAttempt(cpfNormalized, false, 'DRIVER_NOT_FOUND', context, account.userId);
+      await this.registerLoginAttempt({
+        userType: AuthUserType.DRIVER,
+        loginDocumentType: LoginDocumentType.CPF,
+        loginDocumentValue: cpfNormalized,
+        success: false,
+        reason: 'DRIVER_NOT_FOUND',
+        context,
+        userId: account.userId,
+      });
       throw new UnauthorizedException('invalid credentials');
     }
 
     if (driver.status === DriverStatus.BLOCKED || !driver.isActive) {
-      await this.registerLoginAttempt(cpfNormalized, false, 'DRIVER_BLOCKED', context, account.userId);
+      await this.registerLoginAttempt({
+        userType: AuthUserType.DRIVER,
+        loginDocumentType: LoginDocumentType.CPF,
+        loginDocumentValue: cpfNormalized,
+        success: false,
+        reason: 'DRIVER_BLOCKED',
+        context,
+        userId: account.userId,
+      });
       throw new ForbiddenException('driver is blocked');
     }
 
@@ -147,7 +197,15 @@ export class AuthService {
           },
         },
       );
-      await this.registerLoginAttempt(cpfNormalized, false, 'INVALID_PASSWORD', context, account.userId);
+      await this.registerLoginAttempt({
+        userType: AuthUserType.DRIVER,
+        loginDocumentType: LoginDocumentType.CPF,
+        loginDocumentValue: cpfNormalized,
+        success: false,
+        reason: 'INVALID_PASSWORD',
+        context,
+        userId: account.userId,
+      });
       throw new UnauthorizedException('invalid credentials');
     }
 
@@ -185,9 +243,114 @@ export class AuthService {
       expiresAt: new Date(Date.now() + REFRESH_TOKEN_EXPIRY_SECONDS * 1000),
       createdAt: new Date(),
     });
-    await this.registerLoginAttempt(cpfNormalized, true, 'SUCCESS', context, account.userId);
+    await this.registerLoginAttempt({
+      userType: AuthUserType.DRIVER,
+      loginDocumentType: LoginDocumentType.CPF,
+      loginDocumentValue: cpfNormalized,
+      success: true,
+      reason: 'SUCCESS',
+      context,
+      userId: account.userId,
+    });
 
     return { accessToken, refreshToken };
+  }
+
+  async loginAdmin(dto: AdminLoginDto, context: LoginContext): Promise<{ accessToken: string }> {
+    const emailNormalized = dto.email.trim().toLowerCase();
+    const account = await this.authAccountModel.findOne({
+      userType: AuthUserType.ADMIN,
+      loginDocumentType: LoginDocumentType.EMAIL,
+      loginDocumentValue: emailNormalized,
+    });
+
+    if (!account || account.disabledAt) {
+      await this.registerLoginAttempt({
+        userType: AuthUserType.ADMIN,
+        loginDocumentType: LoginDocumentType.EMAIL,
+        loginDocumentValue: emailNormalized,
+        success: false,
+        reason: 'ACCOUNT_NOT_FOUND',
+        context,
+      });
+      throw new UnauthorizedException('invalid admin credentials');
+    }
+
+    if (account.lockedUntil && account.lockedUntil.getTime() > Date.now()) {
+      await this.registerLoginAttempt({
+        userType: AuthUserType.ADMIN,
+        loginDocumentType: LoginDocumentType.EMAIL,
+        loginDocumentValue: emailNormalized,
+        success: false,
+        reason: 'ACCOUNT_TEMPORARILY_LOCKED',
+        context,
+        userId: account.userId,
+      });
+      throw new UnauthorizedException('admin account temporarily locked');
+    }
+
+    const passwordMatches = await argon2.verify(account.passwordHash, dto.password);
+    if (!passwordMatches) {
+      const failedLoginCount = account.failedLoginCount + 1;
+      const shouldLock = failedLoginCount >= MAX_FAILED_LOGIN_ATTEMPTS;
+      await this.authAccountModel.updateOne(
+        { _id: account.id },
+        {
+          $set: {
+            failedLoginCount,
+            lockedUntil: shouldLock
+              ? new Date(Date.now() + ACCOUNT_LOCK_MINUTES * 60 * 1000)
+              : null,
+          },
+        },
+      );
+      await this.registerLoginAttempt({
+        userType: AuthUserType.ADMIN,
+        loginDocumentType: LoginDocumentType.EMAIL,
+        loginDocumentValue: emailNormalized,
+        success: false,
+        reason: 'INVALID_PASSWORD',
+        context,
+        userId: account.userId,
+      });
+      throw new UnauthorizedException('invalid admin credentials');
+    }
+
+    await this.authAccountModel.updateOne(
+      { _id: account.id },
+      {
+        $set: {
+          failedLoginCount: 0,
+          lockedUntil: null,
+          lastLoginAt: new Date(),
+          lastLoginIp: context.ip,
+        },
+      },
+    );
+    await this.registerLoginAttempt({
+      userType: AuthUserType.ADMIN,
+      loginDocumentType: LoginDocumentType.EMAIL,
+      loginDocumentValue: emailNormalized,
+      success: true,
+      reason: 'SUCCESS',
+      context,
+      userId: account.userId,
+    });
+
+    const accessToken = await this.jwtService.signAsync(
+      {
+        sub: account.userId,
+        ut: AuthUserType.ADMIN,
+        role: 'admin',
+        scp: ['admin:*'],
+      },
+      {
+        secret: this.configService.get<string>('AUTH_ACCESS_TOKEN_SECRET') ?? 'local-dev-access-secret',
+        expiresIn: ACCESS_TOKEN_EXPIRY_SECONDS,
+      },
+    );
+
+    return { accessToken };
   }
 
   async refresh(dto: RefreshTokenDto, context: LoginContext): Promise<{ accessToken: string; refreshToken: string }> {
@@ -300,6 +463,44 @@ export class AuthService {
     }
   }
 
+  async validateAdminAccessToken(token: string): Promise<AuthenticatedAdminUser> {
+    try {
+      const payload = await this.jwtService.verifyAsync<{
+        sub: string;
+        ut: AuthUserType;
+        role?: string;
+        scp?: string[];
+      }>(token, {
+        secret: this.configService.get<string>('AUTH_ACCESS_TOKEN_SECRET') ?? 'local-dev-access-secret',
+      });
+
+      if (payload.ut !== AuthUserType.ADMIN || payload.role !== 'admin') {
+        throw new ForbiddenException('admin role is required to access admin routes');
+      }
+
+      const account = await this.authAccountModel.findOne({
+        userId: payload.sub,
+        userType: AuthUserType.ADMIN,
+        loginDocumentType: LoginDocumentType.EMAIL,
+      }).lean();
+      if (!account || account.disabledAt) {
+        throw new UnauthorizedException('admin no longer allowed');
+      }
+
+      return {
+        userId: payload.sub,
+        userType: payload.ut,
+        role: 'admin',
+        scopes: payload.scp ?? ['admin:*'],
+      };
+    } catch (error) {
+      if (error instanceof ForbiddenException || error instanceof UnauthorizedException) {
+        throw error;
+      }
+      throw new UnauthorizedException('invalid access token');
+    }
+  }
+
   private resolveScopesByStatus(status: DriverStatus): string[] {
     const baseScopes = ['drivers:status:read', 'drivers:profile:read'];
     switch (status) {
@@ -321,22 +522,24 @@ export class AuthService {
     return createHash('sha256').update(value).digest('hex');
   }
 
-  private async registerLoginAttempt(
-    loginDocumentValue: string,
-    success: boolean,
-    reason: string,
-    context: LoginContext,
-    userId?: string,
-  ): Promise<void> {
+  private async registerLoginAttempt(input: {
+    userType: AuthUserType;
+    loginDocumentType: LoginDocumentType;
+    loginDocumentValue: string;
+    success: boolean;
+    reason: string;
+    context: LoginContext;
+    userId?: string;
+  }): Promise<void> {
     await this.loginAttemptModel.create({
-      userType: AuthUserType.DRIVER,
-      loginDocumentType: LoginDocumentType.CPF,
-      loginDocumentValue,
-      success,
-      reason,
-      userId,
-      ip: context.ip,
-      userAgent: context.userAgent,
+      userType: input.userType,
+      loginDocumentType: input.loginDocumentType,
+      loginDocumentValue: input.loginDocumentValue,
+      success: input.success,
+      reason: input.reason,
+      userId: input.userId,
+      ip: input.context.ip,
+      userAgent: input.context.userAgent,
       createdAt: new Date(),
     });
   }

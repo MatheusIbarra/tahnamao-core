@@ -29,6 +29,7 @@
 
 ### Admin Drivers
 
+- Login administrativo dedicado em endpoint separado (`/admin/auth/login`).
 - Fila de motoristas pendentes para revisao.
 - Snapshot detalhado de cadastro e documentos.
 - Acoes de aprovar, rejeitar, bloquear e desbloquear motorista.

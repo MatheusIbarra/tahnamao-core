@@ -2,18 +2,20 @@
 
 ## Responsabilidade
 
-Autenticacao e autorizacao com login por CPF+senha, emissao de access/refresh token e bloqueio por tentativas falhas.
+Autenticacao e autorizacao para motoristas e administradores, com login dedicado por perfil, emissao de tokens e bloqueio por tentativas falhas.
 
 ## Entradas
 
-- credenciais de login (`CPF` + senha)
-- refresh token
+- credenciais de login de motorista (`CPF` + senha)
+- credenciais de login de admin (`email` + senha)
+- refresh token de motorista
 - definicao de senha para conta de motorista
 
 ## Saidas
 
-- access token com claims de status/scopes
-- refresh token opaco
+- access token de motorista com claims de status/scopes
+- access token de admin com claim `role=admin`
+- refresh token opaco para motorista
 - trilha de tentativas de login
 
 ## Portas

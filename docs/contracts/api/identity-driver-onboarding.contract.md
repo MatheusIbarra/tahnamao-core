@@ -5,6 +5,7 @@
 - `POST /api/v1/auth/login`
 - `POST /api/v1/auth/refresh`
 - `POST /api/v1/auth/logout`
+- `POST /api/v1/admin/auth/login`
 
 ## Endpoints do motorista
 
@@ -32,3 +33,5 @@
 - Login por CPF+senha, sem OTP no MVP.
 - Refresh token persistido no banco como hash.
 - Rotas operacionais devem exigir `driver.status == APPROVED`.
+- Rotas `admin/*` exigem token com claim `role = admin`.
+- Sem permissionamento granular no MVP: qualquer admin autenticado possui acesso total nas rotas administrativas.

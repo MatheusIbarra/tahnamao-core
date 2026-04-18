@@ -1,17 +1,16 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import {
   AdminDecisionDto,
   AdminDocumentDecisionDto,
   AdminListPendingDriversQueryDto,
 } from '../../application/dto/admin-driver-review.dto';
 import { AdminId } from './decorators/admin-id.decorator';
-import { AdminHeaderGuard } from './guards/admin-header.guard';
 import { DriversService } from '../../../drivers/application/services/drivers.service';
 
 @ApiTags('Admin Drivers')
+@ApiBearerAuth()
 @Controller('admin/drivers')
-@UseGuards(AdminHeaderGuard)
 export class AdminDriversController {
   constructor(private readonly driversService: DriversService) {}
 

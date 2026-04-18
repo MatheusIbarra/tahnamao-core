@@ -57,3 +57,29 @@ export class AuthTokensDto {
   @ApiProperty()
   expiresInSeconds!: number;
 }
+
+export class AdminLoginDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  @Matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, {
+    message: 'email must be a valid value',
+  })
+  email!: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  password!: string;
+}
+
+export class AdminAccessTokenDto {
+  @ApiProperty()
+  accessToken!: string;
+
+  @ApiProperty()
+  tokenType!: 'Bearer';
+
+  @ApiProperty()
+  expiresInSeconds!: number;
+}
