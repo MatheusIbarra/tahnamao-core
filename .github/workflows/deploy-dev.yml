@@ -59,14 +59,11 @@ jobs:
           cd '${{ secrets.VPS_PATH }}'
           npm install --omit=dev
 
-          if pm2 describe tahnamao-core > /dev/null 2>&1; then
-            # restart all so every process reloads (matches manual fix on the VPS)
-          else
+          if ! pm2 describe tahnamao-core > /dev/null 2>&1; then
             pm2 start dist/src/main.js \
               --name tahnamao-core \
               --env production
           fi
           pm2 restart all
           pm2 save
-
           REMOTE
