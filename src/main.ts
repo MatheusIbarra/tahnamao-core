@@ -8,6 +8,11 @@ import { CorrelationIdInterceptor } from './shared/presentation/http/interceptor
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
 
+  app.enableCors({
+    origin: true,
+    credentials: true,
+  });
+
   app.setGlobalPrefix('api');
   app.enableVersioning({
     type: VersioningType.URI,
@@ -32,15 +37,19 @@ async function bootstrap(): Promise<void> {
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('api/docs', app, document, {
+  SwaggerModule.setup('docs', app, document, {
+    useGlobalPrefix: true,
     swaggerOptions: {
       persistAuthorization: true,
+      tryItOutEnabled: true,
     },
   });
 
   await app.listen(process.env.PORT ?? 3000);
-  Logger.log(`Server is running on port ${process.env.PORT ?? 3000}`);
-  Logger.log(`Swagger is running on http://localhost:${process.env.PORT ?? 3000}/api/docs`);  Logger.log(`Environment: ${process.env.NODE_ENV ?? 'development'}`);
+  const port = process.env.PORT ?? 3000;
+  Logger.log(`Server is running on port ${port}`);
+  Logger.log(`Swagger is running on http://localhost:${port}/api/docs`);
+  Logger.log(`Environment: ${process.env.NODE_ENV ?? 'development'}`);
 }
 
 void bootstrap();

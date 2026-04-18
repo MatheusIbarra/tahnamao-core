@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { ExecutionContext, Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { JwtModule } from '@nestjs/jwt';
@@ -18,14 +18,30 @@ import {
 } from './infrastructure/mongo/schemas/auth-login-attempt.schema';
 import { DriverDocument, DriverSchema } from '../drivers/infrastructure/mongo/schemas/driver.schema';
 
+function shouldSkipThrottling(context: ExecutionContext): boolean {
+  if (context.getType() !== 'http') {
+    return false;
+  }
+  const request = context.switchToHttp().getRequest<{ originalUrl?: string; url?: string } | undefined>();
+  if (!request) {
+    return false;
+  }
+  const path = request.originalUrl ?? request.url ?? '';
+  return path.startsWith('/api/docs');
+}
+
 @Module({
   imports: [
-    ThrottlerModule.forRoot([
-      {
-        ttl: 60_000,
-        limit: 120,
-      },
-    ]),
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          name: 'default',
+          ttl: 60_000,
+          limit: 120,
+        },
+      ],
+      skipIf: shouldSkipThrottling,
+    }),
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({

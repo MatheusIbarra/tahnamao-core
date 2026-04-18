@@ -59,13 +59,14 @@ jobs:
           cd '${{ secrets.VPS_PATH }}'
           npm install --omit=dev
 
-          # Force delete + recreate para garantir que o novo dist seja carregado
           if pm2 describe tahnamao-core > /dev/null 2>&1; then
-            pm2 delete tahnamao-core
+            # restart all so every process reloads (matches manual fix on the VPS)
+          else
+            pm2 start dist/src/main.js \
+              --name tahnamao-core \
+              --env production
           fi
-
-          pm2 start dist/src/main.js \
-            --name tahnamao-core \
-            --env production
+          pm2 restart all
           pm2 save
+
           REMOTE
