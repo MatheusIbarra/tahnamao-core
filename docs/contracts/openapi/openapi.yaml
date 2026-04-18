@@ -2,10 +2,416 @@ openapi: 3.0.3
 info:
   title: tahnamao-core
   version: 0.1.0
-  description: Core API for deliveries and future rides expansion.
+  description: Core API for local deliveries and future rides expansion.
 servers:
   - url: /api/v1
 paths:
+  /auth/login:
+    post:
+      tags: [Identity]
+      summary: Logs in a driver using CPF and password
+      operationId: authLogin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Tokens issued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokensResponse'
+  /auth/refresh:
+    post:
+      tags: [Identity]
+      summary: Renews access token with refresh token
+      operationId: authRefresh
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: Tokens renewed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthTokensResponse'
+  /auth/logout:
+    post:
+      tags: [Identity]
+      summary: Revokes active refresh token(s)
+      operationId: authLogout
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+      responses:
+        '204':
+          description: Tokens revoked.
+  /drivers:
+    post:
+      tags: [Drivers]
+      summary: Creates a draft onboarding
+      operationId: driversCreateDraft
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDriverDraftRequest'
+      responses:
+        '201':
+          description: Draft created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DriverDraftResponse'
+  /drivers/me:
+    patch:
+      tags: [Drivers]
+      summary: Updates driver profile
+      operationId: driversUpdateMe
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDriverProfileRequest'
+      responses:
+        '200':
+          description: Profile updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusOkResponse'
+  /drivers/me/password:
+    post:
+      tags: [Drivers]
+      summary: Sets or updates onboarding password
+      operationId: driversSetPassword
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetPasswordRequest'
+      responses:
+        '201':
+          description: Password set.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusOkResponse'
+  /drivers/me/documents:
+    post:
+      tags: [Drivers]
+      summary: Uploads a document metadata entry for manual review
+      operationId: driversUploadDocument
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterDriverDocumentRequest'
+      responses:
+        '200':
+          description: Document version stored.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentVersionResponse'
+  /drivers/me/documents/{type}/resubmit:
+    post:
+      tags: [Drivers]
+      summary: Resubmits a document as a new version
+      operationId: driversResubmitDocument
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: type
+          required: true
+          schema:
+            $ref: '#/components/schemas/DriverDocumentType'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterDriverDocumentRequest'
+      responses:
+        '200':
+          description: Document version stored.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentVersionResponse'
+  /drivers/me/submit:
+    post:
+      tags: [Drivers]
+      summary: Finalizes onboarding package and sends to manual review
+      operationId: driversSubmit
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitOnboardingRequest'
+      responses:
+        '200':
+          description: Onboarding submitted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusOkResponse'
+  /drivers/me/onboarding-status:
+    get:
+      tags: [Drivers]
+      summary: Returns onboarding status for current driver
+      operationId: driversGetOnboardingStatus
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current onboarding state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DriverOnboardingStatusResponse'
+  /admin/drivers/pending:
+    get:
+      tags: [Admin Drivers]
+      summary: Lists pending driver applications
+      operationId: adminDriversPending
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - in: query
+          name: pageSize
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Pending list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PendingDriversResponse'
+  /admin/drivers/{driverId}:
+    get:
+      tags: [Admin Drivers]
+      summary: Returns a review snapshot for one driver
+      operationId: adminDriverSnapshot
+      parameters:
+        - in: path
+          name: driverId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Driver snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminDriverSnapshotResponse'
+  /admin/drivers/{driverId}/approve:
+    post:
+      tags: [Admin Drivers]
+      summary: Approves one driver
+      operationId: adminApproveDriver
+      parameters:
+        - in: path
+          name: driverId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminDecisionRequest'
+      responses:
+        '200':
+          description: Driver approved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusOkResponse'
+  /admin/drivers/{driverId}/reject:
+    post:
+      tags: [Admin Drivers]
+      summary: Rejects one driver
+      operationId: adminRejectDriver
+      parameters:
+        - in: path
+          name: driverId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminDecisionRequest'
+      responses:
+        '200':
+          description: Driver rejected.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusOkResponse'
+  /admin/drivers/{driverId}/block:
+    post:
+      tags: [Admin Drivers]
+      summary: Blocks one driver
+      operationId: adminBlockDriver
+      parameters:
+        - in: path
+          name: driverId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminDecisionRequest'
+      responses:
+        '200':
+          description: Driver blocked.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusOkResponse'
+  /admin/drivers/{driverId}/unblock:
+    post:
+      tags: [Admin Drivers]
+      summary: Unblocks one driver
+      operationId: adminUnblockDriver
+      parameters:
+        - in: path
+          name: driverId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminDecisionRequest'
+      responses:
+        '200':
+          description: Driver unblocked.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusOkResponse'
+  /admin/drivers/{driverId}/documents/{documentId}/approve:
+    post:
+      tags: [Admin Drivers]
+      summary: Approves one driver document version
+      operationId: adminApproveDriverDocument
+      parameters:
+        - in: path
+          name: driverId
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: documentId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminDocumentDecisionRequest'
+      responses:
+        '200':
+          description: Document approved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusOkResponse'
+  /admin/drivers/{driverId}/documents/{documentId}/reject:
+    post:
+      tags: [Admin Drivers]
+      summary: Rejects one driver document version
+      operationId: adminRejectDriverDocument
+      parameters:
+        - in: path
+          name: driverId
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: documentId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminDocumentDecisionRequest'
+      responses:
+        '200':
+          description: Document rejected.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusOkResponse'
+  /files/register:
+    post:
+      tags: [Files]
+      summary: Registers a file id metadata entry
+      operationId: filesRegister
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterStoredFileRequest'
+      responses:
+        '201':
+          description: File registered.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusOkResponse'
   /health/live:
     get:
       tags: [Health]
@@ -37,7 +443,232 @@ paths:
               schema:
                 $ref: '#/components/schemas/HealthResponse'
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
+    DriverStatus:
+      type: string
+      enum: [DRAFT, PENDING_REVIEW, APPROVED, REJECTED, BLOCKED]
+    DriverOnboardingStep:
+      type: string
+      enum: [PROFILE, PASSWORD, DOCUMENTS, SELFIE, SUBMITTED]
+    DriverDocumentType:
+      type: string
+      enum: [CPF_FRONT, CPF_BACK, RG_FRONT, RG_BACK, CNH_FRONT, CNH_BACK, SELFIE]
+    DriverDocumentStatus:
+      type: string
+      enum: [PENDING_REVIEW, APPROVED, REJECTED]
+    LoginRequest:
+      type: object
+      required: [cpf, password]
+      properties:
+        cpf:
+          type: string
+          example: '52998224725'
+        password:
+          type: string
+          format: password
+    RefreshRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+    LogoutRequest:
+      type: object
+      properties:
+        allSessions:
+          type: boolean
+          default: false
+    AuthTokensResponse:
+      type: object
+      required: [accessToken, refreshToken, tokenType, expiresInSeconds]
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        tokenType:
+          type: string
+          example: Bearer
+        expiresInSeconds:
+          type: integer
+          example: 900
+    CreateDriverDraftRequest:
+      type: object
+      properties:
+        fullName:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+          format: email
+    DriverDraftResponse:
+      type: object
+      required: [driverId, status, accessToken]
+      properties:
+        driverId:
+          type: string
+        status:
+          $ref: '#/components/schemas/DriverStatus'
+        accessToken:
+          type: string
+    UpdateDriverProfileRequest:
+      type: object
+      required: [fullName, cpf, birthDate, phone, email]
+      properties:
+        fullName:
+          type: string
+        cpf:
+          type: string
+        birthDate:
+          type: string
+          format: date
+        phone:
+          type: string
+        email:
+          type: string
+          format: email
+    SetPasswordRequest:
+      type: object
+      required: [password, passwordConfirm]
+      properties:
+        password:
+          type: string
+          format: password
+          minLength: 8
+        passwordConfirm:
+          type: string
+          format: password
+    RegisterDriverDocumentRequest:
+      type: object
+      required: [type, fileId, mimeType, originalFileName, fileSizeBytes]
+      properties:
+        type:
+          $ref: '#/components/schemas/DriverDocumentType'
+        fileId:
+          type: string
+        mimeType:
+          type: string
+        originalFileName:
+          type: string
+        fileSizeBytes:
+          type: string
+        extractedCpfNormalized:
+          type: string
+        extractedFullName:
+          type: string
+    SubmitOnboardingRequest:
+      type: object
+      properties:
+        declarationAccepted:
+          type: boolean
+          default: true
+    DocumentVersionResponse:
+      type: object
+      required: [status, version]
+      properties:
+        status:
+          type: string
+          example: ok
+        version:
+          type: integer
+    DriverOnboardingStatusResponse:
+      type: object
+      required: [driverId, status, onboardingStep]
+      properties:
+        driverId:
+          type: string
+        status:
+          $ref: '#/components/schemas/DriverStatus'
+        onboardingStep:
+          $ref: '#/components/schemas/DriverOnboardingStep'
+        rejectionReason:
+          type: string
+    DriverDocumentSnapshot:
+      type: object
+      required: [id, type, status, version, fileId]
+      properties:
+        id:
+          type: string
+        type:
+          $ref: '#/components/schemas/DriverDocumentType'
+        status:
+          $ref: '#/components/schemas/DriverDocumentStatus'
+        version:
+          type: integer
+        fileId:
+          type: string
+        rejectionReason:
+          type: string
+    PendingDriversResponse:
+      type: object
+      required: [items, total, page, pageSize]
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+    AdminDriverSnapshotResponse:
+      type: object
+      required: [driver, latestDocuments]
+      properties:
+        driver:
+          type: object
+        latestDocuments:
+          type: array
+          items:
+            $ref: '#/components/schemas/DriverDocumentSnapshot'
+    AdminDecisionRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+        notes:
+          type: string
+        checkedCpfMatch:
+          type: boolean
+        checkedFaceMatch:
+          type: boolean
+        checkedDocumentReadability:
+          type: boolean
+        checkedFraudSignals:
+          type: boolean
+    AdminDocumentDecisionRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+    RegisterStoredFileRequest:
+      type: object
+      required: [fileId, mimeType, originalFileName, sizeBytes]
+      properties:
+        fileId:
+          type: string
+        mimeType:
+          type: string
+        originalFileName:
+          type: string
+        sizeBytes:
+          type: integer
+          minimum: 1
+    StatusOkResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          example: ok
     HealthCheckItem:
       type: object
       required:

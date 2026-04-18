@@ -1,0 +1,6 @@
+export enum DriverApprovalReviewStatus {
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+  NEEDS_RESUBMISSION = 'NEEDS_RESUBMISSION',
+  BLOCKED = 'BLOCKED',
+}
