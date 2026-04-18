@@ -1,0 +1,81 @@
+openapi: 3.0.3
+info:
+  title: tahnamao-core
+  version: 0.1.0
+  description: Core API for deliveries and future rides expansion.
+servers:
+  - url: /api/v1
+paths:
+  /health/live:
+    get:
+      tags: [Health]
+      summary: Liveness probe for process health
+      operationId: healthLive
+      responses:
+        '200':
+          description: Process is alive.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /health/ready:
+    get:
+      tags: [Health]
+      summary: Readiness probe for dependencies (MongoDB)
+      operationId: healthReady
+      responses:
+        '200':
+          description: Service is ready.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Service is not ready.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+components:
+  schemas:
+    HealthCheckItem:
+      type: object
+      required:
+        - dependency
+        - status
+        - details
+      properties:
+        dependency:
+          type: string
+          example: mongo
+        status:
+          type: string
+          enum: [up, down]
+        details:
+          type: string
+          example: reachable
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - service
+        - version
+        - timestamp
+        - checks
+      properties:
+        status:
+          type: string
+          enum: [ok, error]
+        service:
+          type: string
+          example: tahnamao-core
+        version:
+          type: string
+          example: 0.1.0
+        timestamp:
+          type: string
+          format: date-time
+        checks:
+          type: array
+          items:
+            $ref: '#/components/schemas/HealthCheckItem'

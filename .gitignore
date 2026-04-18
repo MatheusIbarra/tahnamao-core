@@ -1,0 +1,61 @@
+node_modules
+dist
+.env
+.DS_Store
+coverage
+*.log
+# Dependencies
+node_modules/
+
+# Build (NestJS default outDir)
+dist/
+
+# Tests & coverage
+coverage/
+*.lcov
+.nyc_output/
+
+# TypeScript
+*.tsbuildinfo
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Logs & debug
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Lockfile when using a different package manager (this repo uses yarn.lock)
+package-lock.json
+
+# Caches
+.cache/
+.eslintcache
+*.tmp
+*.temp
+.tmp/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors / IDEs
+.idea/
+*.iml
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Optional local tooling
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
