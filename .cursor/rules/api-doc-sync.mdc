@@ -1,0 +1,16 @@
+---
+description: Enforce API documentation sync for endpoint changes
+alwaysApply: true
+---
+
+# API Documentation Sync Rule
+
+When any API endpoint is created, removed, renamed, or behavior is changed:
+
+1. Update `docs/contracts/openapi/openapi.yaml`.
+2. Update the matching contract file in `docs/contracts/api/*`.
+3. If business behavior changed, update `docs/business-rules/*`.
+4. If module responsibilities changed, update `docs/modules/*`.
+5. Add or adjust automated tests relevant to the change.
+
+Do not finish the task with endpoint changes while documentation is outdated.

@@ -23,6 +23,7 @@ Backend core soberano para o ecossistema Tahnamao.
 
 ## Documentação
 
+- Visao geral do sistema: `docs/system-overview.md`
 - Arquitetura: `docs/architecture`
 - Regras de negócio: `docs/business-rules`
 - ADRs: `docs/adr`

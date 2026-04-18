@@ -32,6 +32,7 @@ Preserve architectural integrity before writing code.
 - Do not invent architecture outside repository standards.
 - Do not implement without reading applicable contracts and rules.
 - Do not change contracts without updating OpenAPI and derived artifacts.
+- Do not create, remove, or change API endpoints without updating docs in the same task (`docs/contracts/openapi/openapi.yaml` and `docs/contracts/api/*`).
 - Do not change business rules without updating corresponding docs.
 - Do not spread critical logic outside proper layer.
 - Do not move critical rules to frontend/admin when they belong in the API.

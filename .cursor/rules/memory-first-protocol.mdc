@@ -15,6 +15,7 @@ Before proposing, editing, or refactoring code:
 Hard rules:
 
 - Never change API contracts without updating OpenAPI and derived artifacts.
+- Never create/remove/change API endpoints without updating `docs/contracts/openapi/openapi.yaml` and `docs/contracts/api/*` in the same task.
 - Never change business rules without updating docs in `docs/business-rules`.
 - Never place critical business logic in frontend/admin.
 - Never bypass layer boundaries (`presentation -> application -> domain`).
