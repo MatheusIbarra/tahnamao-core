@@ -37,7 +37,8 @@ function shouldSkipThrottling(context: ExecutionContext): boolean {
         {
           name: 'default',
           ttl: 60_000,
-          limit: 120,
+          // Limite global alto o bastante para dev/Swagger; rotas sensíveis usam @Throttle mais restrito.
+          limit: 600,
         },
       ],
       skipIf: shouldSkipThrottling,

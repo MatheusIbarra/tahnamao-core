@@ -18,7 +18,7 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(200)
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @ApiOperation({ summary: 'Logs in a driver using CPF and password' })
   @ApiResponse({ status: 200, type: AuthTokensDto })
   async login(@Body() dto: LoginDto, @Req() request: HttpRequest): Promise<AuthTokensDto> {
@@ -35,7 +35,7 @@ export class AuthController {
 
   @Post('refresh')
   @HttpCode(200)
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
   @ApiOperation({ summary: 'Renews an access token with a valid refresh token' })
   @ApiResponse({ status: 200, type: AuthTokensDto })
   async refresh(@Body() dto: RefreshTokenDto, @Req() request: HttpRequest): Promise<AuthTokensDto> {
