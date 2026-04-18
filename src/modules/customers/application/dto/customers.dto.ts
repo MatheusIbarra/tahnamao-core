@@ -1,15 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  IsBoolean,
-  IsEmail,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  Length,
-  Matches,
-  MaxLength,
-  MinLength,
-} from 'class-validator';
+import { IsBoolean, IsEmail, IsNotEmpty, IsOptional, IsString, Length, Matches, MaxLength, MinLength } from 'class-validator';
 import { CustomerStatus } from '../../domain/customer.enums';
 
 export class RegisterCustomerDto {
@@ -58,14 +48,24 @@ export class UpdateCustomerProfileDto {
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsEmail()
-  email?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
   @IsString()
   @MaxLength(20)
   phone?: string;
+}
+
+export class ChangeCustomerPasswordDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  currentPassword!: string;
+
+  @ApiProperty()
+  @IsString()
+  @MinLength(8)
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/, {
+    message: 'newPassword must contain upper, lower and numeric chars',
+  })
+  newPassword!: string;
 }
 
 export class CustomerProfileResponseDto {

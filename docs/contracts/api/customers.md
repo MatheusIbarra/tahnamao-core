@@ -11,6 +11,7 @@
 
 - `GET /api/v1/customers/me`
 - `PATCH /api/v1/customers/me`
+- `PATCH /api/v1/customers/me/password`
 
 ## Endpoints de enderecos
 
@@ -25,8 +26,10 @@
 
 - Cadastro exige `name`, `email`, `phone`, `password`.
 - `email` e `phone` devem ser unicos por cliente.
+- `email` nao pode ser alterado apos cadastro.
 - Senha de cliente e persistida como `passwordHash` com `bcrypt`.
 - Login de cliente usa `email + senha` e retorna `accessToken` + `refreshToken`.
+- Troca de senha exige `currentPassword` valido antes de persistir `newPassword`.
 - Todas as rotas `/customers/me/*` exigem token Bearer valido para `AuthUserType.CUSTOMER`.
 - Endereco exige CEP com 8 digitos numericos.
 - Para CEP valido, o backend tenta sugestao de logradouro/bairro/cidade/estado via ViaCEP.

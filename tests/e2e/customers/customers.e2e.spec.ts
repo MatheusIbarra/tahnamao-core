@@ -96,6 +96,50 @@ describe('Customers (e2e)', () => {
       .set('Authorization', `Bearer ${accessToken}`)
       .expect(200);
 
+    const updateProfileResponse = await request(app.getHttpServer())
+      .patch('/api/v1/customers/me')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({
+        name: 'Alice Updated',
+        phone: '11988887777',
+      })
+      .expect(200);
+    expect(updateProfileResponse.body.name).toBe('Alice Updated');
+    expect(updateProfileResponse.body.phone).toBe('11988887777');
+
+    await request(app.getHttpServer())
+      .patch('/api/v1/customers/me')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({
+        email: 'other@example.com',
+      })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .patch('/api/v1/customers/me/password')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({
+        currentPassword: 'Password123',
+        newPassword: 'Password456',
+      })
+      .expect(204);
+
+    await request(app.getHttpServer())
+      .post('/api/v1/customers/auth/login')
+      .send({
+        email: 'alice@example.com',
+        password: 'Password123',
+      })
+      .expect(401);
+
+    await request(app.getHttpServer())
+      .post('/api/v1/customers/auth/login')
+      .send({
+        email: 'alice@example.com',
+        password: 'Password456',
+      })
+      .expect(200);
+
     const firstAddressResponse = await request(app.getHttpServer())
       .post('/api/v1/customers/me/addresses')
       .set('Authorization', `Bearer ${accessToken}`)

@@ -197,6 +197,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CustomerProfileResponse'
+  /customers/me/password:
+    patch:
+      tags: [Customers]
+      summary: Changes current customer password
+      operationId: customersChangePassword
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangeCustomerPasswordRequest'
+      responses:
+        '204':
+          description: Password changed.
   /customers/me/addresses:
     post:
       tags: [Customers]
@@ -890,12 +906,20 @@ components:
           type: string
           minLength: 3
           maxLength: 120
-        email:
-          type: string
-          format: email
         phone:
           type: string
           maxLength: 20
+    ChangeCustomerPasswordRequest:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+          format: password
+        newPassword:
+          type: string
+          format: password
+          minLength: 8
     CustomerProfileResponse:
       type: object
       required: [id, name, email, phone, status, createdAt, updatedAt]

@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import {
+  ChangeCustomerPasswordDto,
   CreateCustomerAddressDto,
   CustomerAddressResponseDto,
   CustomerProfileResponseDto,
@@ -59,6 +60,19 @@ export class CustomersController {
     @Body() dto: UpdateCustomerProfileDto,
   ): Promise<CustomerProfileResponseDto> {
     return this.customersService.updateProfile(user.userId, dto);
+  }
+
+  @Patch('me/password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiBearerAuth()
+  @UseGuards(CustomerAuthGuard)
+  @ApiOperation({ summary: 'Changes current customer password using current password confirmation' })
+  @ApiResponse({ status: 204, description: 'Password changed.' })
+  async changeMyPassword(
+    @CurrentCustomer() user: { userId: string },
+    @Body() dto: ChangeCustomerPasswordDto,
+  ): Promise<void> {
+    await this.customersService.changePassword(user.userId, dto);
   }
 
   @Post('me/addresses')

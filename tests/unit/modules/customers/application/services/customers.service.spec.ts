@@ -1,4 +1,5 @@
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { CustomersService } from '@src/modules/customers/application/services/customers.service';
 
 describe('CustomersService', () => {
@@ -62,5 +63,75 @@ describe('CustomersService', () => {
         password: 'Password123',
       }),
     ).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('updates name and phone without changing email', async () => {
+    const model = makeModel();
+    const save = jest.fn();
+    model.findById.mockResolvedValue({
+      id: 'customer-1',
+      name: 'Alice',
+      email: 'alice@example.com',
+      phone: '11999999999',
+      phoneNormalized: '11999999999',
+      status: 'ACTIVE',
+      createdAt: new Date('2026-01-01T12:00:00.000Z'),
+      updatedAt: new Date('2026-01-01T12:00:00.000Z'),
+      save,
+    });
+    model.findOne.mockResolvedValue(null);
+    const service = new CustomersService(model as any);
+
+    const result = await service.updateProfile('customer-1', {
+      name: 'Alice Updated',
+      phone: '(11) 98888-7777',
+    });
+
+    expect(save).toHaveBeenCalled();
+    expect(result).toEqual(
+      expect.objectContaining({
+        name: 'Alice Updated',
+        phone: '(11) 98888-7777',
+        email: 'alice@example.com',
+      }),
+    );
+  });
+
+  it('changes password when current password is valid', async () => {
+    const model = makeModel();
+    const save = jest.fn();
+    const currentHash = await bcrypt.hash('OldPassword1', 4);
+    model.findById.mockResolvedValue({
+      id: 'customer-1',
+      passwordHash: currentHash,
+      save,
+    });
+    const service = new CustomersService(model as any);
+
+    await service.changePassword('customer-1', {
+      currentPassword: 'OldPassword1',
+      newPassword: 'NewPassword1',
+    });
+
+    expect(save).toHaveBeenCalled();
+  });
+
+  it('rejects password change when current password is invalid', async () => {
+    const model = makeModel();
+    const save = jest.fn();
+    const currentHash = await bcrypt.hash('OldPassword1', 4);
+    model.findById.mockResolvedValue({
+      id: 'customer-1',
+      passwordHash: currentHash,
+      save,
+    });
+    const service = new CustomersService(model as any);
+
+    await expect(
+      service.changePassword('customer-1', {
+        currentPassword: 'WrongPassword1',
+        newPassword: 'NewPassword1',
+      }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });

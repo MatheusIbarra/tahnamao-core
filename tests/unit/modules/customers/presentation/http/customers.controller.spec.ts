@@ -6,6 +6,7 @@ describe('CustomersController', () => {
       register: jest.fn(),
       getProfile: jest.fn(),
       updateProfile: jest.fn(),
+      changePassword: jest.fn(),
     };
     const customerAddressesService = {
       create: jest.fn(),
@@ -53,5 +54,19 @@ describe('CustomersController', () => {
       apelido: 'Casa',
     });
     expect(result).toEqual({ id: 'address-1' });
+  });
+
+  it('delegates customer password change to service', async () => {
+    const { controller, customersService } = makeController();
+
+    await controller.changeMyPassword(
+      { userId: 'customer-1' },
+      { currentPassword: 'OldPassword1', newPassword: 'NewPassword1' },
+    );
+
+    expect(customersService.changePassword).toHaveBeenCalledWith('customer-1', {
+      currentPassword: 'OldPassword1',
+      newPassword: 'NewPassword1',
+    });
   });
 });

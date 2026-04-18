@@ -8,15 +8,17 @@ Define as regras do MVP para cadastro de clientes, autenticacao com tokens e ger
 
 1. Cadastro de cliente exige `name`, `email`, `phone` e `password`.
 2. `email` e `phone` devem ser unicos para cada cliente.
-3. Senha do cliente deve ser persistida apenas como hash (`bcrypt`), nunca em texto puro.
-4. Cliente com `status=BLOCKED` nao pode autenticar nem renovar sessao.
-5. Rotas de perfil e enderecos exigem token com `ut=CUSTOMER`.
-6. CEP deve possuir exatamente 8 digitos numericos.
-7. Backend consulta ViaCEP para sugerir logradouro/bairro/cidade/estado com base no CEP.
-8. Se ViaCEP estiver indisponivel ou incompleto, os campos obrigatorios de endereco devem ser informados manualmente.
-9. Cada cliente pode ter no maximo um endereco ativo marcado como default.
-10. Ao definir novo default, o endereco default anterior deve ser desmarcado automaticamente.
-11. Exclusao de endereco e logica (`isActive=false`) para preservar historico.
+3. `email` nao pode ser alterado apos o cadastro inicial do cliente.
+4. Troca de senha exige validacao da senha atual antes de persistir a nova senha.
+5. Senha do cliente deve ser persistida apenas como hash (`bcrypt`), nunca em texto puro.
+6. Cliente com `status=BLOCKED` nao pode autenticar nem renovar sessao.
+7. Rotas de perfil e enderecos exigem token com `ut=CUSTOMER`.
+8. CEP deve possuir exatamente 8 digitos numericos.
+9. Backend consulta ViaCEP para sugerir logradouro/bairro/cidade/estado com base no CEP.
+10. Se ViaCEP estiver indisponivel ou incompleto, os campos obrigatorios de endereco devem ser informados manualmente.
+11. Cada cliente pode ter no maximo um endereco ativo marcado como default.
+12. Ao definir novo default, o endereco default anterior deve ser desmarcado automaticamente.
+13. Exclusao de endereco e logica (`isActive=false`) para preservar historico.
 
 ## Invariantes
 

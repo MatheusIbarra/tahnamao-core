@@ -1,13 +1,16 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import {
+  ChangeCustomerPasswordDto,
   CustomerProfileResponseDto,
   RegisterCustomerDto,
   UpdateCustomerProfileDto,
@@ -59,17 +62,35 @@ export class CustomersService {
       throw new NotFoundException('customer not found');
     }
 
-    const nextEmail = dto.email ? dto.email.trim().toLowerCase() : customer.email;
     const nextPhone = dto.phone ? this.normalizePhone(dto.phone) : customer.phoneNormalized;
-    await this.ensureUniqueEmailAndPhone(nextEmail, nextPhone, customer.id);
+    await this.ensureUniquePhone(nextPhone, customer.id);
 
     customer.name = dto.name?.trim() ?? customer.name;
-    customer.email = nextEmail;
     customer.phone = dto.phone?.trim() ?? customer.phone;
     customer.phoneNormalized = nextPhone;
     await customer.save();
 
     return this.toProfileResponse(customer);
+  }
+
+  async changePassword(customerId: string, dto: ChangeCustomerPasswordDto): Promise<void> {
+    const customer = await this.customerModel.findById(customerId);
+    if (!customer) {
+      throw new NotFoundException('customer not found');
+    }
+
+    const currentPasswordMatches = await bcrypt.compare(dto.currentPassword, customer.passwordHash);
+    if (!currentPasswordMatches) {
+      throw new UnauthorizedException('current password is invalid');
+    }
+
+    const samePassword = await bcrypt.compare(dto.newPassword, customer.passwordHash);
+    if (samePassword) {
+      throw new BadRequestException('new password must be different from current password');
+    }
+
+    customer.passwordHash = await bcrypt.hash(dto.newPassword, 10);
+    await customer.save();
   }
 
   private async ensureUniqueEmailAndPhone(
@@ -82,6 +103,13 @@ export class CustomersService {
       throw new ConflictException('email already in use');
     }
 
+    const existingByPhone = await this.customerModel.findOne({ phoneNormalized });
+    if (existingByPhone && existingByPhone._id.toString() !== currentCustomerId) {
+      throw new ConflictException('phone already in use');
+    }
+  }
+
+  private async ensureUniquePhone(phoneNormalized: string, currentCustomerId?: string): Promise<void> {
     const existingByPhone = await this.customerModel.findOne({ phoneNormalized });
     if (existingByPhone && existingByPhone._id.toString() !== currentCustomerId) {
       throw new ConflictException('phone already in use');
