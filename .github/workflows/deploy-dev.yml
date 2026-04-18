@@ -59,18 +59,31 @@ jobs:
           cd '${{ secrets.VPS_PATH }}'
           npm install --omit=dev
 
-          old_pid="$(pm2 pid tahnamao-core || true)"
-          if ! pm2 describe tahnamao-core > /dev/null 2>&1; then
+          app_name=""
+          if pm2 describe tahnamao-core > /dev/null 2>&1; then
+            app_name="tahnamao-core"
+          elif pm2 describe tahnamao > /dev/null 2>&1; then
+            app_name="tahnamao"
+          fi
+
+          old_pid="none"
+          if [ -n "${app_name}" ]; then
+            old_pid="$(pm2 pid "${app_name}" || true)"
+          fi
+
+          if [ -z "${app_name}" ]; then
             pm2 start dist/src/main.js \
               --name tahnamao-core \
               --env production
+            app_name="tahnamao-core"
           else
-            pm2 restart tahnamao-core --update-env
+            pm2 restart "${app_name}" --update-env
           fi
 
-          new_pid="$(pm2 pid tahnamao-core || true)"
-          echo "tahnamao-core PID before: ${old_pid:-none}"
-          echo "tahnamao-core PID after : ${new_pid:-none}"
-          pm2 status tahnamao-core
+          new_pid="$(pm2 pid "${app_name}" || true)"
+          echo "PM2 app target      : ${app_name}"
+          echo "PM2 PID before restart: ${old_pid:-none}"
+          echo "PM2 PID after restart : ${new_pid:-none}"
+          pm2 status "${app_name}"
           pm2 save
           REMOTE
