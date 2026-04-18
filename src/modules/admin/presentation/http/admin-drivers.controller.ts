@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import {
+  AdminListDriversQueryDto,
   AdminDecisionDto,
   AdminDocumentDecisionDto,
   AdminListPendingDriversQueryDto,
@@ -13,6 +14,20 @@ import { DriversService } from '../../../drivers/application/services/drivers.se
 @Controller('admin/drivers')
 export class AdminDriversController {
   constructor(private readonly driversService: DriversService) {}
+
+  @Get()
+  @ApiOperation({ summary: 'Lists drivers with optional status and search filters' })
+  @ApiResponse({ status: 200, description: 'Drivers list returned.' })
+  listDrivers(
+    @Query() query: AdminListDriversQueryDto,
+  ): Promise<{ items: unknown[]; total: number; page: number; limit: number }> {
+    return this.driversService.listAdminDrivers({
+      status: query.status,
+      search: query.search,
+      page: query.page,
+      limit: query.limit,
+    });
+  }
 
   @Get('pending')
   @ApiOperation({ summary: 'Lists pending driver applications for manual review' })

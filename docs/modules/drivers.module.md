@@ -13,6 +13,7 @@ Gerenciar perfil, status de onboarding, documentacao do motorista e elegibilidad
 ## Saidas
 
 - status de onboarding por motorista
+- listagem administrativa de motoristas com filtros por status e busca textual
 - fila de motoristas pendentes para revisao
 - snapshot de documentos para analise do admin
 

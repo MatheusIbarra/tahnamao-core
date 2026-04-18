@@ -67,3 +67,13 @@ jobs:
           pm2 restart all
           pm2 save
           REMOTE
+
+      - name: Restarting PM2 services
+        run: |
+          ssh -i ~/.ssh/id_ed25519 "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" bash << 'REMOTE'
+          set -euo pipefail
+
+          cd '${{ secrets.VPS_PATH }}'
+          pm2 restart all
+          pm2 save
+          REMOTE

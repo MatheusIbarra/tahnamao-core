@@ -20,6 +20,7 @@
 
 ## Endpoints administrativos
 
+- `GET /api/v1/admin/drivers`
 - `GET /api/v1/admin/drivers/pending`
 - `GET /api/v1/admin/drivers/{driverId}`
 - `POST /api/v1/admin/drivers/{driverId}/approve`

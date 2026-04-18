@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { FilterQuery, Model } from 'mongoose';
 import { DriverApprovalReviewsService } from '../../../approvals/application/services/driver-approval-reviews.service';
 import { DriverApprovalReviewStatus } from '../../../approvals/domain/approval.enums';
 import { AdminActionsAuditService } from '../../../audit/application/services/admin-actions-audit.service';
@@ -43,6 +43,41 @@ interface AdminDecisionInput {
   checkedFaceMatch?: boolean;
   checkedDocumentReadability?: boolean;
   checkedFraudSignals?: boolean;
+}
+
+export type AdminDriversListStatus =
+  | 'PENDENTE_APROVACAO'
+  | 'DISPONIVEL'
+  | 'EM_CORRIDA'
+  | 'BLOQUEADO';
+
+interface ListAdminDriversInput {
+  status?: AdminDriversListStatus;
+  search?: string;
+  page: number;
+  limit: number;
+}
+
+interface AdminDriverListItem {
+  id: string;
+  fullName: string;
+  cpf: string;
+  phone: string;
+  status: string;
+  createdAt?: Date;
+}
+
+function mapDriverStatusToAdminStatus(status: DriverStatus): string {
+  switch (status) {
+    case DriverStatus.PENDING_REVIEW:
+      return 'PENDENTE_APROVACAO';
+    case DriverStatus.APPROVED:
+      return 'DISPONIVEL';
+    case DriverStatus.BLOCKED:
+      return 'BLOQUEADO';
+    default:
+      return status;
+  }
 }
 
 @Injectable()
@@ -254,6 +289,74 @@ export class DriversService {
     return { items, total };
   }
 
+  async listAdminDrivers(input: ListAdminDriversInput): Promise<{
+    items: AdminDriverListItem[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
+    const safePage = Math.max(input.page, 1);
+    const safeLimit = Math.min(Math.max(input.limit, 1), 100);
+    const filter: FilterQuery<DriverDocument> = {
+      deletedAt: { $exists: false },
+    };
+
+    if (input.status === 'PENDENTE_APROVACAO') {
+      filter.status = DriverStatus.PENDING_REVIEW;
+    } else if (input.status === 'DISPONIVEL') {
+      filter.status = DriverStatus.APPROVED;
+      filter.isActive = true;
+    } else if (input.status === 'EM_CORRIDA') {
+      // The MVP model has no explicit "in-ride" state; keep filter explicit and non-misleading.
+      filter._id = { $exists: false };
+    } else if (input.status === 'BLOQUEADO') {
+      filter.status = DriverStatus.BLOCKED;
+    }
+
+    if (input.search?.trim()) {
+      const search = input.search.trim();
+      const normalizedSearch = search.replace(/\D/g, '');
+
+      const searchFilter: FilterQuery<DriverDocument>[] = [
+        { fullName: { $regex: search, $options: 'i' } },
+      ];
+
+      if (normalizedSearch.length > 0) {
+        searchFilter.push(
+          { cpfNormalized: { $regex: normalizedSearch } },
+          { cpf: { $regex: normalizedSearch } },
+        );
+      }
+
+      filter.$or = searchFilter;
+    }
+
+    const [items, total] = await Promise.all([
+      this.driverModel
+        .find(filter)
+        .sort({ createdAt: -1 })
+        .skip((safePage - 1) * safeLimit)
+        .limit(safeLimit)
+        .select('_id fullName cpf phone status createdAt')
+        .lean(),
+      this.driverModel.countDocuments(filter),
+    ]);
+
+    return {
+      items: items.map((driver) => ({
+        id: String(driver._id),
+        fullName: driver.fullName,
+        cpf: driver.cpf,
+        phone: driver.phone,
+        status: mapDriverStatusToAdminStatus(driver.status),
+        createdAt: (driver as { createdAt?: Date }).createdAt,
+      })),
+      total,
+      page: safePage,
+      limit: safeLimit,
+    };
+  }
+
   async getDriverReviewSnapshot(driverId: string): Promise<{
     driver: unknown;
     latestDocuments: unknown[];
@@ -367,7 +470,7 @@ export class DriversService {
     if (driver.status !== DriverStatus.BLOCKED) {
       throw new BadRequestException('only blocked drivers can be unblocked');
     }
-    driver.status = DriverStatus.PENDING_REVIEW;
+    driver.status = DriverStatus.APPROVED;
     driver.isActive = true;
     driver.blockedAt = undefined;
     await driver.save();

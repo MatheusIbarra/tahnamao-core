@@ -260,6 +260,43 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PendingDriversResponse'
+  /admin/drivers:
+    get:
+      tags: [Admin Drivers]
+      summary: Lists drivers with status and text filters
+      operationId: adminDriversList
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [PENDENTE_APROVACAO, DISPONIVEL, EM_CORRIDA, BLOQUEADO]
+        - in: query
+          name: search
+          schema:
+            type: string
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Drivers list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminDriversListResponse'
   /admin/drivers/{driverId}:
     get:
       tags: [Admin Drivers]
@@ -718,6 +755,38 @@ components:
         page:
           type: integer
         pageSize:
+          type: integer
+    AdminDriverListItem:
+      type: object
+      required: [id, fullName, cpf, phone, status]
+      properties:
+        id:
+          type: string
+        fullName:
+          type: string
+        cpf:
+          type: string
+        phone:
+          type: string
+        status:
+          type: string
+          enum: [PENDENTE_APROVACAO, DISPONIVEL, EM_CORRIDA, BLOQUEADO, DRAFT, REJECTED]
+        createdAt:
+          type: string
+          format: date-time
+    AdminDriversListResponse:
+      type: object
+      required: [items, total, page, limit]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminDriverListItem'
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
           type: integer
     AdminDriverSnapshotResponse:
       type: object
