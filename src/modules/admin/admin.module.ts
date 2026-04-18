@@ -5,10 +5,12 @@ import { AdminDriversController } from './presentation/http/admin-drivers.contro
 import { IdentityModule } from '../identity/identity.module';
 import { AdminAuthController } from './presentation/http/admin-auth.controller';
 import { AdminGuard } from './presentation/http/guards/admin.guard';
+import { CustomersModule } from '../customers/customers.module';
+import { AdminCustomersController } from './presentation/http/admin-customers.controller';
 
 @Module({
-  imports: [DriversModule, IdentityModule],
-  controllers: [AdminDriversController, AdminAuthController],
+  imports: [DriversModule, CustomersModule, IdentityModule],
+  controllers: [AdminDriversController, AdminCustomersController, AdminAuthController],
   providers: [
     AdminGuard,
     {

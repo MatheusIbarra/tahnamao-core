@@ -22,6 +22,13 @@
 - `DELETE /api/v1/customers/me/addresses/{id}`
 - `PATCH /api/v1/customers/me/addresses/{id}/default`
 
+## Endpoints administrativos de clientes
+
+- `GET /api/v1/admin/clients`
+- `GET /api/v1/admin/clients/{customerId}`
+- `POST /api/v1/admin/clients/{customerId}/block`
+- `POST /api/v1/admin/clients/{customerId}/unblock`
+
 ## Regras de negocio e seguranca
 
 - Cadastro exige `name`, `email`, `phone`, `password`.
@@ -31,6 +38,7 @@
 - Login de cliente usa `email + senha` e retorna `accessToken` + `refreshToken`.
 - Troca de senha exige `currentPassword` valido antes de persistir `newPassword`.
 - Todas as rotas `/customers/me/*` exigem token Bearer valido para `AuthUserType.CUSTOMER`.
+- Rotas `admin/clients/*` exigem token admin valido (`role=admin`).
 - Endereco exige CEP com 8 digitos numericos.
 - Para CEP valido, o backend tenta sugestao de logradouro/bairro/cidade/estado via ViaCEP.
 - Se ViaCEP nao retornar dados suficientes, o cliente deve fornecer campos obrigatorios manualmente.

@@ -735,6 +735,102 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/StatusOkResponse'
+  /admin/clients:
+    get:
+      tags: [Admin Customers]
+      summary: Lists customers with name/email filters
+      operationId: adminCustomersList
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: name
+          schema:
+            type: string
+        - in: query
+          name: email
+          schema:
+            type: string
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Customers list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminCustomersListResponse'
+  /admin/clients/{customerId}:
+    get:
+      tags: [Admin Customers]
+      summary: Returns one customer snapshot
+      operationId: adminCustomerSnapshot
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: customerId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Customer snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminCustomerListItem'
+  /admin/clients/{customerId}/block:
+    post:
+      tags: [Admin Customers]
+      summary: Blocks one customer
+      operationId: adminCustomerBlock
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: customerId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Customer blocked.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusOkResponse'
+  /admin/clients/{customerId}/unblock:
+    post:
+      tags: [Admin Customers]
+      summary: Unblocks one customer
+      operationId: adminCustomerUnblock
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: customerId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Customer unblocked.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusOkResponse'
   /files/upload:
     post:
       tags: [Files]
@@ -1152,6 +1248,39 @@ components:
         page:
           type: integer
         pageSize:
+          type: integer
+    AdminCustomerListItem:
+      type: object
+      required: [id, name, email, phone, status]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        status:
+          type: string
+          enum: [ATIVO, BLOQUEADO]
+        createdAt:
+          type: string
+          format: date-time
+    AdminCustomersListResponse:
+      type: object
+      required: [items, total, page, limit]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminCustomerListItem'
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
           type: integer
     AdminDriverListItem:
       type: object

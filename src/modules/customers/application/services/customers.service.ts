@@ -7,7 +7,7 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { FilterQuery, Model } from 'mongoose';
 import * as bcrypt from 'bcrypt';
 import {
   ChangeCustomerPasswordDto,
@@ -20,6 +20,22 @@ import {
   CustomerHydratedDocument,
 } from '../../infrastructure/mongo/schemas/customer.schema';
 import { CustomerStatus } from '../../domain/customer.enums';
+
+interface ListAdminCustomersInput {
+  name?: string;
+  email?: string;
+  page: number;
+  limit: number;
+}
+
+interface AdminCustomerListItem {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  status: 'ATIVO' | 'BLOQUEADO';
+  createdAt?: Date;
+}
 
 @Injectable()
 export class CustomersService {
@@ -93,6 +109,82 @@ export class CustomersService {
     await customer.save();
   }
 
+  async listAdminCustomers(
+    input: ListAdminCustomersInput,
+  ): Promise<{ items: AdminCustomerListItem[]; total: number; page: number; limit: number }> {
+    const query: FilterQuery<CustomerDocument> = {};
+    const filters: FilterQuery<CustomerDocument>[] = [];
+
+    if (input.name?.trim()) {
+      filters.push({ name: { $regex: input.name.trim(), $options: 'i' } });
+    }
+    if (input.email?.trim()) {
+      filters.push({ email: { $regex: input.email.trim(), $options: 'i' } });
+    }
+    if (filters.length > 0) {
+      query.$and = filters;
+    }
+
+    const [items, total] = await Promise.all([
+      this.customerModel
+        .find(query)
+        .sort({ createdAt: -1 })
+        .skip((input.page - 1) * input.limit)
+        .limit(input.limit),
+      this.customerModel.countDocuments(query),
+    ]);
+
+    return {
+      items: items.map((item) => ({
+        id: item.id,
+        name: item.name,
+        email: item.email,
+        phone: item.phone,
+        status: this.mapStatusToAdmin(item.status),
+        createdAt: item.createdAt,
+      })),
+      total,
+      page: input.page,
+      limit: input.limit,
+    };
+  }
+
+  async getAdminCustomerById(customerId: string): Promise<AdminCustomerListItem> {
+    const customer = await this.customerModel.findById(customerId);
+    if (!customer) {
+      throw new NotFoundException('customer not found');
+    }
+
+    return {
+      id: customer.id,
+      name: customer.name,
+      email: customer.email,
+      phone: customer.phone,
+      status: this.mapStatusToAdmin(customer.status),
+      createdAt: customer.createdAt,
+    };
+  }
+
+  async blockCustomer(customerId: string): Promise<void> {
+    const customer = await this.customerModel.findById(customerId);
+    if (!customer) {
+      throw new NotFoundException('customer not found');
+    }
+
+    customer.status = CustomerStatus.BLOCKED;
+    await customer.save();
+  }
+
+  async unblockCustomer(customerId: string): Promise<void> {
+    const customer = await this.customerModel.findById(customerId);
+    if (!customer) {
+      throw new NotFoundException('customer not found');
+    }
+
+    customer.status = CustomerStatus.ACTIVE;
+    await customer.save();
+  }
+
   private async ensureUniqueEmailAndPhone(
     email: string,
     phoneNormalized: string,
@@ -134,5 +226,9 @@ export class CustomersService {
       createdAt: customer.createdAt,
       updatedAt: customer.updatedAt,
     };
+  }
+
+  private mapStatusToAdmin(status: CustomerStatus): 'ATIVO' | 'BLOQUEADO' {
+    return status === CustomerStatus.BLOCKED ? 'BLOQUEADO' : 'ATIVO';
   }
 }
