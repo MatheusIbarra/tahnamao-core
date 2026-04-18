@@ -26,10 +26,11 @@ export class AdminGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<AdminHttpRequest>();
     const path = request.originalUrl ?? request.url ?? '';
     const isAdminLoginRoute = path.startsWith('/api/v1/admin/auth/login');
+    const isAdminRefreshRoute = path.startsWith('/api/v1/admin/auth/refresh');
     if (!path.includes('/api/v1/admin/')) {
       return true;
     }
-    if (isAdminLoginRoute) {
+    if (isAdminLoginRoute || isAdminRefreshRoute) {
       return true;
     }
 

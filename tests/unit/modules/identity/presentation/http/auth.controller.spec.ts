@@ -1,4 +1,5 @@
 import { AuthController } from '@src/modules/identity/presentation/http/auth.controller';
+import { AuthUserType } from '@src/modules/identity/domain/auth.enums';
 
 describe('AuthController', () => {
   const makeController = () => {
@@ -52,6 +53,7 @@ describe('AuthController', () => {
     expect(authService.refresh).toHaveBeenCalledWith(
       { refreshToken: 'old-refresh-token' },
       { ip: '10.0.0.1', userAgent: 'agent-one' },
+      { restrictUserType: AuthUserType.DRIVER },
     );
     expect(result).toEqual({
       accessToken: 'access-token-2',

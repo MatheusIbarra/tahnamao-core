@@ -49,6 +49,10 @@ interface LoginContext {
   userAgent?: string;
 }
 
+interface RefreshOptions {
+  restrictUserType?: AuthUserType;
+}
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -256,7 +260,7 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  async loginAdmin(dto: AdminLoginDto, context: LoginContext): Promise<{ accessToken: string }> {
+  async loginAdmin(dto: AdminLoginDto, context: LoginContext): Promise<{ accessToken: string; refreshToken: string }> {
     const emailNormalized = dto.email.trim().toLowerCase();
     const account = await this.authAccountModel.findOne({
       userType: AuthUserType.ADMIN,
@@ -350,10 +354,25 @@ export class AuthService {
       },
     );
 
-    return { accessToken };
+    const refreshToken = randomBytes(48).toString('base64url');
+    await this.refreshTokenModel.create({
+      userId: account.userId,
+      userType: AuthUserType.ADMIN,
+      refreshTokenHash: this.hashToken(refreshToken),
+      userAgent: context.userAgent,
+      ip: context.ip,
+      expiresAt: new Date(Date.now() + REFRESH_TOKEN_EXPIRY_SECONDS * 1000),
+      createdAt: new Date(),
+    });
+
+    return { accessToken, refreshToken };
   }
 
-  async refresh(dto: RefreshTokenDto, context: LoginContext): Promise<{ accessToken: string; refreshToken: string }> {
+  async refresh(
+    dto: RefreshTokenDto,
+    context: LoginContext,
+    options?: RefreshOptions,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
     const refreshTokenHash = this.hashToken(dto.refreshToken);
     const persistedToken = await this.refreshTokenModel.findOne({ refreshTokenHash });
     if (
@@ -364,10 +383,8 @@ export class AuthService {
       throw new UnauthorizedException('invalid refresh token');
     }
 
-    const driver = await this.driverModel.findById(persistedToken.userId);
-    if (!driver || driver.deletedAt || driver.status === DriverStatus.BLOCKED || !driver.isActive) {
-      await this.refreshTokenModel.updateOne({ _id: persistedToken.id }, { $set: { revokedAt: new Date() } });
-      throw new ForbiddenException('driver is not allowed to refresh');
+    if (options?.restrictUserType && persistedToken.userType !== options.restrictUserType) {
+      throw new UnauthorizedException('invalid refresh token');
     }
 
     const newRefreshToken = randomBytes(48).toString('base64url');
@@ -390,6 +407,45 @@ export class AuthService {
       expiresAt: new Date(Date.now() + REFRESH_TOKEN_EXPIRY_SECONDS * 1000),
       createdAt: now,
     });
+
+    if (persistedToken.userType === AuthUserType.ADMIN) {
+      const account = await this.authAccountModel.findOne({
+        userId: persistedToken.userId,
+        userType: AuthUserType.ADMIN,
+        loginDocumentType: LoginDocumentType.EMAIL,
+      });
+      if (!account || account.disabledAt) {
+        await this.refreshTokenModel.updateOne(
+          { refreshTokenHash: this.hashToken(newRefreshToken) },
+          { $set: { revokedAt: new Date() } },
+        );
+        throw new ForbiddenException('admin is not allowed to refresh');
+      }
+
+      const accessToken = await this.jwtService.signAsync(
+        {
+          sub: account.userId,
+          ut: AuthUserType.ADMIN,
+          role: 'admin',
+          scp: ['admin:*'],
+        },
+        {
+          secret: this.configService.get<string>('AUTH_ACCESS_TOKEN_SECRET') ?? 'local-dev-access-secret',
+          expiresIn: ACCESS_TOKEN_EXPIRY_SECONDS,
+        },
+      );
+
+      return { accessToken, refreshToken: newRefreshToken };
+    }
+
+    const driver = await this.driverModel.findById(persistedToken.userId);
+    if (!driver || driver.deletedAt || driver.status === DriverStatus.BLOCKED || !driver.isActive) {
+      await this.refreshTokenModel.updateOne(
+        { refreshTokenHash: this.hashToken(newRefreshToken) },
+        { $set: { revokedAt: new Date() } },
+      );
+      throw new ForbiddenException('driver is not allowed to refresh');
+    }
 
     const accessToken = await this.jwtService.signAsync(
       {

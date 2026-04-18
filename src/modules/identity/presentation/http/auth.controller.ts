@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagg
 import { Throttle } from '@nestjs/throttler';
 import { AuthenticatedRequestUser, AuthService } from '../../application/services/auth.service';
 import { AuthTokensDto, LoginDto, LogoutDto, RefreshTokenDto } from '../../application/dto/auth.dto';
+import { AuthUserType } from '../../domain/auth.enums';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentAuthUser } from './decorators/current-auth-user.decorator';
 
@@ -39,10 +40,14 @@ export class AuthController {
   @ApiOperation({ summary: 'Renews an access token with a valid refresh token' })
   @ApiResponse({ status: 200, type: AuthTokensDto })
   async refresh(@Body() dto: RefreshTokenDto, @Req() request: HttpRequest): Promise<AuthTokensDto> {
-    const tokens = await this.authService.refresh(dto, {
-      ip: request.ip,
-      userAgent: this.extractHeaderValue(request.headers['user-agent']),
-    });
+    const tokens = await this.authService.refresh(
+      dto,
+      {
+        ip: request.ip,
+        userAgent: this.extractHeaderValue(request.headers['user-agent']),
+      },
+      { restrictUserType: AuthUserType.DRIVER },
+    );
     return {
       ...tokens,
       tokenType: 'Bearer',

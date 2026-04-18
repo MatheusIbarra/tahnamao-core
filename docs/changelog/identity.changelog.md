@@ -1,5 +1,11 @@
 # Changelog Tecnico - identity
 
+## 0.3.1
+
+- Login admin emite `refreshToken` persistido (hash) com mesma politica de rotacao do motorista.
+- Novo endpoint `POST /admin/auth/refresh` exclusivo para refresh tokens de tipo admin.
+- `POST /auth/refresh` passa a aceitar apenas refresh tokens de motorista (`restrictUserType`).
+
 ## 0.3.0
 
 - Adiciona autenticacao administrativa dedicada em `POST /admin/auth/login`.

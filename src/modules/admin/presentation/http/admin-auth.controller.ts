@@ -3,8 +3,10 @@ import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import {
   AdminAccessTokenDto,
   AdminLoginDto,
+  RefreshTokenDto,
 } from '../../../identity/application/dto/auth.dto';
 import { AuthService } from '../../../identity/application/services/auth.service';
+import { AuthUserType } from '../../../identity/domain/auth.enums';
 
 interface HttpRequest {
   ip?: string;
@@ -28,6 +30,28 @@ export class AdminAuthController {
 
     return {
       accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+      tokenType: 'Bearer',
+      expiresInSeconds: 15 * 60,
+    };
+  }
+
+  @Post('refresh')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Renews an admin access token using a valid admin refresh token' })
+  @ApiResponse({ status: 200, type: AdminAccessTokenDto })
+  async refresh(@Body() dto: RefreshTokenDto, @Req() request: HttpRequest): Promise<AdminAccessTokenDto> {
+    const tokens = await this.authService.refresh(
+      dto,
+      {
+        ip: request.ip,
+        userAgent: this.extractHeaderValue(request.headers['user-agent']),
+      },
+      { restrictUserType: AuthUserType.ADMIN },
+    );
+    return {
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
       tokenType: 'Bearer',
       expiresInSeconds: 15 * 60,
     };

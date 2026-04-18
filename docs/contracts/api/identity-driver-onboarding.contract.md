@@ -6,6 +6,7 @@
 - `POST /api/v1/auth/refresh`
 - `POST /api/v1/auth/logout`
 - `POST /api/v1/admin/auth/login`
+- `POST /api/v1/admin/auth/refresh`
 
 ## Endpoints do motorista
 
@@ -34,4 +35,5 @@
 - Refresh token persistido no banco como hash.
 - Rotas operacionais devem exigir `driver.status == APPROVED`.
 - Rotas `admin/*` exigem token com claim `role = admin`.
+- Login admin retorna `accessToken` (curta duração) e `refreshToken` (persistido como hash, rotação no refresh). O refresh de motorista (`POST /api/v1/auth/refresh`) só aceita tokens de tipo motorista; o refresh admin (`POST /api/v1/admin/auth/refresh`) só aceita tokens de tipo admin.
 - Sem permissionamento granular no MVP: qualquer admin autenticado possui acesso total nas rotas administrativas.

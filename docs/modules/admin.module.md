@@ -13,6 +13,7 @@ Expor rotas administrativas protegidas por autenticacao dedicada de admin, sem R
 ## Saidas
 
 - access token admin para consumo de rotas `/admin/*`
+- refresh token admin e rota `POST /admin/auth/refresh` (sem bearer; corpo `{ refreshToken }`)
 - respostas de operacao administrativa (`approve`, `reject`, `block`, `unblock`)
 
 ## Guardrails

@@ -78,6 +78,9 @@ export class AdminAccessTokenDto {
   accessToken!: string;
 
   @ApiProperty()
+  refreshToken!: string;
+
+  @ApiProperty()
   tokenType!: 'Bearer';
 
   @ApiProperty()
