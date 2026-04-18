@@ -446,6 +446,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/StatusOkResponse'
+  /files/upload:
+    post:
+      tags: [Files]
+      summary: Uploads a file and registers metadata returning fileId
+      operationId: filesUpload
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: File uploaded and registered.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadStoredFileResponse'
   /health/live:
     get:
       tags: [Health]
@@ -710,6 +733,22 @@ components:
       type: object
       required: [fileId, mimeType, originalFileName, sizeBytes]
       properties:
+        fileId:
+          type: string
+        mimeType:
+          type: string
+        originalFileName:
+          type: string
+        sizeBytes:
+          type: integer
+          minimum: 1
+    UploadStoredFileResponse:
+      type: object
+      required: [status, fileId, mimeType, originalFileName, sizeBytes]
+      properties:
+        status:
+          type: string
+          example: ok
         fileId:
           type: string
         mimeType:
