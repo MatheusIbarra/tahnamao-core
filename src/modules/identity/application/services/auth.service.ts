@@ -11,6 +11,7 @@ import { JwtService } from '@nestjs/jwt';
 import { randomBytes, createHash } from 'crypto';
 import { Model } from 'mongoose';
 import * as argon2 from 'argon2';
+import * as bcrypt from 'bcrypt';
 import { DriverDocument } from '../../../drivers/infrastructure/mongo/schemas/driver.schema';
 import { DriverStatus } from '../../../drivers/domain/driver.enums';
 import { AuthUserType, LoginDocumentType } from '../../domain/auth.enums';
@@ -24,17 +25,22 @@ import { AuthAccountDocument } from '../../infrastructure/mongo/schemas/auth-acc
 import { AuthRefreshTokenDocument } from '../../infrastructure/mongo/schemas/auth-refresh-token.schema';
 import { normalizeCpf, isValidCpf } from '../../../../shared/domain/utils/cpf.util';
 import { AuthLoginAttemptDocument } from '../../infrastructure/mongo/schemas/auth-login-attempt.schema';
+import { CustomerDocument } from '../../../customers/infrastructure/mongo/schemas/customer.schema';
+import { CustomerStatus } from '../../../customers/domain/customer.enums';
 
 const ACCESS_TOKEN_EXPIRY_SECONDS = 15 * 60;
 const REFRESH_TOKEN_EXPIRY_SECONDS = 30 * 24 * 60 * 60;
 const MAX_FAILED_LOGIN_ATTEMPTS = 5;
 const ACCOUNT_LOCK_MINUTES = 15;
 
-export interface AuthenticatedRequestUser {
+export interface AuthenticatedSessionUser {
   userId: string;
   userType: AuthUserType;
-  driverStatus: DriverStatus;
   scopes: string[];
+}
+
+export interface AuthenticatedRequestUser extends AuthenticatedSessionUser {
+  driverStatus: DriverStatus;
 }
 
 export interface AuthenticatedAdminUser {
@@ -43,6 +49,8 @@ export interface AuthenticatedAdminUser {
   role: 'admin';
   scopes: string[];
 }
+
+export interface AuthenticatedCustomerUser extends AuthenticatedSessionUser {}
 
 interface LoginContext {
   ip?: string;
@@ -64,6 +72,8 @@ export class AuthService {
     private readonly loginAttemptModel: Model<AuthLoginAttemptDocument>,
     @InjectModel(DriverDocument.name)
     private readonly driverModel: Model<DriverDocument>,
+    @InjectModel(CustomerDocument.name)
+    private readonly customerModel: Model<CustomerDocument>,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
@@ -368,6 +378,89 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
+  async loginCustomer(
+    email: string,
+    password: string,
+    context: LoginContext,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
+    const emailNormalized = email.trim().toLowerCase();
+    const customer = await this.customerModel.findOne({ email: emailNormalized });
+
+    if (!customer) {
+      await this.registerLoginAttempt({
+        userType: AuthUserType.CUSTOMER,
+        loginDocumentType: LoginDocumentType.EMAIL,
+        loginDocumentValue: emailNormalized,
+        success: false,
+        reason: 'ACCOUNT_NOT_FOUND',
+        context,
+      });
+      throw new UnauthorizedException('invalid customer credentials');
+    }
+
+    if (customer.status !== CustomerStatus.ACTIVE) {
+      await this.registerLoginAttempt({
+        userType: AuthUserType.CUSTOMER,
+        loginDocumentType: LoginDocumentType.EMAIL,
+        loginDocumentValue: emailNormalized,
+        success: false,
+        reason: 'CUSTOMER_BLOCKED',
+        context,
+        userId: customer.id,
+      });
+      throw new ForbiddenException('customer is blocked');
+    }
+
+    const passwordMatches = await bcrypt.compare(password, customer.passwordHash);
+    if (!passwordMatches) {
+      await this.registerLoginAttempt({
+        userType: AuthUserType.CUSTOMER,
+        loginDocumentType: LoginDocumentType.EMAIL,
+        loginDocumentValue: emailNormalized,
+        success: false,
+        reason: 'INVALID_PASSWORD',
+        context,
+        userId: customer.id,
+      });
+      throw new UnauthorizedException('invalid customer credentials');
+    }
+
+    const accessToken = await this.jwtService.signAsync(
+      {
+        sub: customer.id,
+        ut: AuthUserType.CUSTOMER,
+        cs: customer.status,
+        scp: ['customers:profile:read', 'customers:profile:write', 'customers:addresses:write'],
+      },
+      {
+        secret: this.configService.get<string>('AUTH_ACCESS_TOKEN_SECRET') ?? 'local-dev-access-secret',
+        expiresIn: ACCESS_TOKEN_EXPIRY_SECONDS,
+      },
+    );
+
+    const refreshToken = randomBytes(48).toString('base64url');
+    await this.refreshTokenModel.create({
+      userId: customer.id,
+      userType: AuthUserType.CUSTOMER,
+      refreshTokenHash: this.hashToken(refreshToken),
+      userAgent: context.userAgent,
+      ip: context.ip,
+      expiresAt: new Date(Date.now() + REFRESH_TOKEN_EXPIRY_SECONDS * 1000),
+      createdAt: new Date(),
+    });
+    await this.registerLoginAttempt({
+      userType: AuthUserType.CUSTOMER,
+      loginDocumentType: LoginDocumentType.EMAIL,
+      loginDocumentValue: emailNormalized,
+      success: true,
+      reason: 'SUCCESS',
+      context,
+      userId: customer.id,
+    });
+
+    return { accessToken, refreshToken };
+  }
+
   async refresh(
     dto: RefreshTokenDto,
     context: LoginContext,
@@ -438,6 +531,32 @@ export class AuthService {
       return { accessToken, refreshToken: newRefreshToken };
     }
 
+    if (persistedToken.userType === AuthUserType.CUSTOMER) {
+      const customer = await this.customerModel.findById(persistedToken.userId);
+      if (!customer || customer.status !== CustomerStatus.ACTIVE) {
+        await this.refreshTokenModel.updateOne(
+          { refreshTokenHash: this.hashToken(newRefreshToken) },
+          { $set: { revokedAt: new Date() } },
+        );
+        throw new ForbiddenException('customer is not allowed to refresh');
+      }
+
+      const accessToken = await this.jwtService.signAsync(
+        {
+          sub: customer.id,
+          ut: AuthUserType.CUSTOMER,
+          cs: customer.status,
+          scp: ['customers:profile:read', 'customers:profile:write', 'customers:addresses:write'],
+        },
+        {
+          secret: this.configService.get<string>('AUTH_ACCESS_TOKEN_SECRET') ?? 'local-dev-access-secret',
+          expiresIn: ACCESS_TOKEN_EXPIRY_SECONDS,
+        },
+      );
+
+      return { accessToken, refreshToken: newRefreshToken };
+    }
+
     const driver = await this.driverModel.findById(persistedToken.userId);
     if (!driver || driver.deletedAt || driver.status === DriverStatus.BLOCKED || !driver.isActive) {
       await this.refreshTokenModel.updateOne(
@@ -466,7 +585,7 @@ export class AuthService {
     };
   }
 
-  async logout(user: AuthenticatedRequestUser, refreshToken?: string, allSessions = false): Promise<void> {
+  async logout(user: AuthenticatedSessionUser, refreshToken?: string, allSessions = false): Promise<void> {
     if (allSessions) {
       await this.refreshTokenModel.updateMany(
         { userId: user.userId, userType: user.userType, revokedAt: null },
@@ -551,6 +670,39 @@ export class AuthService {
       };
     } catch (error) {
       if (error instanceof ForbiddenException || error instanceof UnauthorizedException) {
+        throw error;
+      }
+      throw new UnauthorizedException('invalid access token');
+    }
+  }
+
+  async validateCustomerAccessToken(token: string): Promise<AuthenticatedCustomerUser> {
+    try {
+      const payload = await this.jwtService.verifyAsync<{
+        sub: string;
+        ut: AuthUserType;
+        cs: CustomerStatus;
+        scp: string[];
+      }>(token, {
+        secret: this.configService.get<string>('AUTH_ACCESS_TOKEN_SECRET') ?? 'local-dev-access-secret',
+      });
+
+      if (payload.ut !== AuthUserType.CUSTOMER) {
+        throw new UnauthorizedException('invalid customer token');
+      }
+
+      const customer = await this.customerModel.findById(payload.sub).lean();
+      if (!customer || customer.status !== CustomerStatus.ACTIVE) {
+        throw new UnauthorizedException('customer no longer allowed');
+      }
+
+      return {
+        userId: payload.sub,
+        userType: payload.ut,
+        scopes: payload.scp ?? ['customers:profile:read'],
+      };
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
         throw error;
       }
       throw new UnauthorizedException('invalid access token');

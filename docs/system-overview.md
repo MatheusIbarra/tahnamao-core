@@ -2,7 +2,7 @@
 
 ## O que o sistema faz
 
-`tahnamao-core` e a API soberana do ecossistema Tahnamao. O sistema concentra regras criticas de autenticacao, onboarding e aprovacao manual de motoristas, prontidao operacional e contratos de integracao para clientes internos.
+`tahnamao-core` e a API soberana do ecossistema Tahnamao. O sistema concentra regras criticas de autenticacao, onboarding e aprovacao manual de motoristas, cadastro/autenticacao de clientes, gestao de enderecos, prontidao operacional e contratos de integracao para clientes internos.
 
 ## Objetivos principais
 
@@ -16,8 +16,9 @@
 ### Identity
 
 - Login de motorista por CPF + senha.
+- Login de cliente por email + senha.
 - Rotacao e revogacao de refresh token com hash persistido.
-- Validacao de acesso baseada no status do motorista.
+- Validacao de acesso baseada no status da conta (`DRIVER`, `ADMIN` e `CUSTOMER`).
 
 ### Drivers
 
@@ -26,6 +27,15 @@
 - Envio e reenvio de documentos versionados.
 - Submissao de onboarding para revisao manual.
 - Consulta de status de onboarding.
+
+### Customers
+
+- Registro de cliente com `name`, `email`, `phone` e `password`.
+- Autenticacao de cliente com emissao de `accessToken` e `refreshToken`.
+- Consulta e atualizacao do perfil do cliente autenticado.
+- CRUD de enderecos do cliente com soft delete.
+- Definicao de endereco padrao com garantia de unicidade por cliente.
+- Sugestao de logradouro/bairro/cidade/estado por CEP via integracao ViaCEP.
 
 ### Admin Drivers
 
@@ -46,11 +56,13 @@
 
 ## Fluxo funcional resumido
 
-1. Motorista cria draft de cadastro.
-2. Motorista completa perfil, senha e documentos.
-3. Motorista envia onboarding para revisao manual.
-4. Admin revisa e decide (aprova/rejeita/bloqueia).
-5. Motorista aprovado recebe acesso operacional conforme regras de status.
+1. Cliente se cadastra e autentica para iniciar o fluxo de pedidos.
+2. Cliente gerencia seus enderecos salvos, incluindo definicao de endereco padrao.
+3. Motorista cria draft de cadastro.
+4. Motorista completa perfil, senha e documentos.
+5. Motorista envia onboarding para revisao manual.
+6. Admin revisa e decide (aprova/rejeita/bloqueia).
+7. Motorista aprovado recebe acesso operacional conforme regras de status.
 
 ## Contratos e documentacao oficial
 

@@ -17,6 +17,7 @@ import {
   AuthLoginAttemptSchema,
 } from './infrastructure/mongo/schemas/auth-login-attempt.schema';
 import { DriverDocument, DriverSchema } from '../drivers/infrastructure/mongo/schemas/driver.schema';
+import { CustomerDocument, CustomerSchema } from '../customers/infrastructure/mongo/schemas/customer.schema';
 
 function shouldSkipThrottling(context: ExecutionContext): boolean {
   if (context.getType() !== 'http') {
@@ -54,6 +55,7 @@ function shouldSkipThrottling(context: ExecutionContext): boolean {
       { name: AuthRefreshTokenDocument.name, schema: AuthRefreshTokenSchema },
       { name: AuthLoginAttemptDocument.name, schema: AuthLoginAttemptSchema },
       { name: DriverDocument.name, schema: DriverSchema },
+      { name: CustomerDocument.name, schema: CustomerSchema },
     ]),
   ],
   controllers: [AuthController],

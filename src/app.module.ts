@@ -17,6 +17,7 @@ import { PayoutsModule } from './modules/payouts/payouts.module';
 import { WorkersModule } from './modules/workers/workers.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { MongoModule } from './shared/infrastructure/mongo/mongo.module';
+import { CustomersModule } from './modules/customers/customers.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { MongoModule } from './shared/infrastructure/mongo/mongo.module';
     PayoutsModule,
     WorkersModule,
     NotificationsModule,
+    CustomersModule,
   ],
 })
 export class AppModule {}
