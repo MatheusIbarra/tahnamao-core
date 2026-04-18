@@ -21,7 +21,7 @@
     "openapi:generate": "ts-node scripts/generate-openapi.ts",
     "openapi:validate": "ts-node scripts/validate-openapi.ts",
     "postman:sync": "ts-node scripts/sync-postman-from-openapi.ts",
-    "seed:admin": "ts-node scripts/seed-admin.ts",
+    "seed:admin": "ts-node -r dotenv/config scripts/seed-admin.ts",
     "contracts:check": "npm run openapi:validate && npm run postman:sync",
     "ci:verify": "npm run lint && npm run test:unit && npm run test:integration && npm run test:e2e && npm run test:contract && npm run contracts:check"
   },
@@ -38,6 +38,7 @@
     "argon2": "^0.44.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
+    "dotenv": "^17.4.2",
     "mongoose": "^8.19.2",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",

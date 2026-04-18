@@ -7,10 +7,7 @@ import {
 } from '../src/modules/identity/infrastructure/mongo/schemas/auth-account.schema';
 
 async function run(): Promise<void> {
-  const mongoUri = process.env.MONGODB_URI;
-  if (!mongoUri) {
-    throw new Error('MONGODB_URI is required');
-  }
+  const mongoUri = process.env.MONGODB_URI ?? 'mongodb://localhost:27017/tahnamao-core';
 
   const adminId = process.env.ADMIN_SEED_ID ?? 'admin-seed-1';
   const adminEmail = (process.env.ADMIN_SEED_EMAIL ?? 'admin@tahnamao.local').trim().toLowerCase();
@@ -43,6 +40,8 @@ async function run(): Promise<void> {
       { upsert: true },
     );
 
+    // eslint-disable-next-line no-console
+    console.log(`Using Mongo URI: ${mongoUri}`);
     // eslint-disable-next-line no-console
     console.log(`Admin seed upserted: ${adminEmail} (${adminId})`);
   } finally {
