@@ -1,0 +1,30 @@
+---
+description: Enforce project memory-first protocol before coding
+alwaysApply: true
+---
+
+# Memory First Protocol (`tahnamao-core`)
+
+Before proposing, editing, or refactoring code:
+
+1. Read: `README.md`, `AGENTS.md`, `docs/architecture/*`, `docs/business-rules/*`, `docs/contracts/openapi/openapi.yaml`, `docs/contracts/api/*`, `docs/modules/*`, `docs/adr/*`, and files of the affected module.
+2. Confirm architecture/contracts/rules constraints.
+3. Provide a short plan.
+4. Implement only if aligned with architecture, contracts, docs, and tests.
+
+Hard rules:
+
+- Never change API contracts without updating OpenAPI and derived artifacts.
+- Never change business rules without updating docs in `docs/business-rules`.
+- Never place critical business logic in frontend/admin.
+- Never bypass layer boundaries (`presentation -> application -> domain`).
+- If context is missing, stop and list what is missing.
+- If code/docs conflict, report the conflict before implementation.
+
+Always respond in this order:
+
+1. Context read
+2. Constraints found
+3. Change plan
+4. Files to modify
+5. Impact on contracts/docs/tests
