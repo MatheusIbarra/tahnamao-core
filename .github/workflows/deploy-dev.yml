@@ -36,7 +36,8 @@ jobs:
 
       - name: Ensure remote path exists
         run: |
-          ssh -i ~/.ssh/id_ed25519 "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" "mkdir -p '${{ secrets.VPS_PATH }}'"
+          ssh -i ~/.ssh/id_ed25519 "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" \
+            "mkdir -p '${{ secrets.VPS_PATH }}'"
 
       - name: Upload files
         run: |
@@ -49,16 +50,22 @@ jobs:
         run: |
           ssh -i ~/.ssh/id_ed25519 "${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}" bash << 'REMOTE'
           set -euo pipefail
+
           cat > '${{ secrets.VPS_PATH }}/.env' << 'ENVEOF'
           ${{ secrets.APP_ENV_FILE }}
           ENVEOF
           chmod 600 '${{ secrets.VPS_PATH }}/.env'
+
           cd '${{ secrets.VPS_PATH }}'
           npm install --omit=dev
+
+          # Force delete + recreate para garantir que o novo dist seja carregado
           if pm2 describe tahnamao-core > /dev/null 2>&1; then
-            pm2 restart tahnamao-core --update-env
-          else
-            pm2 start dist/src/main.js --name tahnamao-core
+            pm2 delete tahnamao-core
           fi
+
+          pm2 start dist/src/main.js \
+            --name tahnamao-core \
+            --env production
           pm2 save
           REMOTE
