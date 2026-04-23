@@ -18,6 +18,7 @@ import { WorkersModule } from './modules/workers/workers.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { MongoModule } from './shared/infrastructure/mongo/mongo.module';
 import { CustomersModule } from './modules/customers/customers.module';
+import { OrdersModule } from './modules/orders/orders.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { CustomersModule } from './modules/customers/customers.module';
     WorkersModule,
     NotificationsModule,
     CustomersModule,
+    OrdersModule,
   ],
 })
 export class AppModule {}

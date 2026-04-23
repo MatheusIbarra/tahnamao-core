@@ -328,6 +328,442 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CustomerAddressResponse'
+  /orders:
+    post:
+      tags: [Orders]
+      summary: Creates a new order in iFood model
+      operationId: ordersCreate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+      responses:
+        '201':
+          description: Order created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateOrderResponse'
+        '422':
+          description: Restaurant closed or item unavailable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HttpErrorResponse'
+  /orders/public/{publicCode}:
+    get:
+      tags: [Orders]
+      summary: Gets public order status by public code
+      operationId: ordersPublicStatus
+      parameters:
+        - in: path
+          name: publicCode
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Public order status.
+          content:
+            application/json:
+              schema:
+                type: object
+  /orders/me:
+    get:
+      tags: [Orders]
+      summary: Lists customer orders by customerId
+      operationId: ordersMyList
+      parameters:
+        - in: query
+          name: customerId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Customer orders.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+  /orders/me/pending-reviews:
+    get:
+      tags: [Orders]
+      summary: Lists delivered orders waiting for review
+      operationId: ordersPendingReviews
+      parameters:
+        - in: query
+          name: customerId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Pending reviews list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+  /orders/{orderId}/reviews:
+    post:
+      tags: [Orders]
+      summary: Submits review for one delivered order
+      operationId: ordersSubmitReview
+      parameters:
+        - in: path
+          name: orderId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: customerId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Review submitted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusOkResponse'
+  /orders/{orderId}/reviews/dismiss:
+    post:
+      tags: [Orders]
+      summary: Dismisses review prompt for one order
+      operationId: ordersDismissReviewPrompt
+      parameters:
+        - in: path
+          name: orderId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: customerId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Prompt dismissed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusOkResponse'
+  /restaurants:
+    get:
+      tags: [Orders]
+      summary: Lists active restaurants for catalog
+      operationId: restaurantsList
+      parameters:
+        - in: query
+          name: q
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Restaurants list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+  /restaurants/{restaurantId}:
+    get:
+      tags: [Orders]
+      summary: Returns one restaurant with available menu
+      operationId: restaurantsGetOneWithMenu
+      parameters:
+        - in: path
+          name: restaurantId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Restaurant with menu.
+          content:
+            application/json:
+              schema:
+                type: object
+  /restaurants/{restaurantId}/reviews:
+    get:
+      tags: [Orders]
+      summary: Lists public restaurant reviews
+      operationId: restaurantsPublicReviews
+      parameters:
+        - in: path
+          name: restaurantId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Public reviews.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+  /business/restaurants/{restaurantId}/profile:
+    get:
+      tags: [Orders]
+      summary: Gets restaurant business profile
+      operationId: businessRestaurantProfileGet
+      parameters:
+        - in: path
+          name: restaurantId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Restaurant profile.
+          content:
+            application/json:
+              schema:
+                type: object
+    patch:
+      tags: [Orders]
+      summary: Updates restaurant business profile
+      operationId: businessRestaurantProfileUpdate
+      parameters:
+        - in: path
+          name: restaurantId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Restaurant profile updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusOkResponse'
+  /business/restaurants/{restaurantId}/media:
+    patch:
+      tags: [Orders]
+      summary: Updates restaurant media
+      operationId: businessRestaurantMediaUpdate
+      parameters:
+        - in: path
+          name: restaurantId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Restaurant media updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusOkResponse'
+  /business/restaurants/{restaurantId}/menu-items:
+    get:
+      tags: [Orders]
+      summary: Lists restaurant menu items
+      operationId: businessRestaurantMenuList
+      parameters:
+        - in: path
+          name: restaurantId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Menu items.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+    post:
+      tags: [Orders]
+      summary: Creates one restaurant menu item
+      operationId: businessRestaurantMenuCreate
+      parameters:
+        - in: path
+          name: restaurantId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Menu item created.
+          content:
+            application/json:
+              schema:
+                type: object
+  /business/restaurants/{restaurantId}/menu-items/{menuItemId}:
+    patch:
+      tags: [Orders]
+      summary: Updates one restaurant menu item
+      operationId: businessRestaurantMenuUpdate
+      parameters:
+        - in: path
+          name: restaurantId
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: menuItemId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Menu item updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusOkResponse'
+    delete:
+      tags: [Orders]
+      summary: Deletes one restaurant menu item
+      operationId: businessRestaurantMenuDelete
+      parameters:
+        - in: path
+          name: restaurantId
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: menuItemId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Menu item deleted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusOkResponse'
+  /business/restaurants/{restaurantId}/orders:
+    get:
+      tags: [Orders]
+      summary: Lists restaurant orders
+      operationId: businessRestaurantOrdersList
+      parameters:
+        - in: path
+          name: restaurantId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Restaurant orders.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+  /business/restaurants/{restaurantId}/orders/{orderId}/status:
+    patch:
+      tags: [Orders]
+      summary: Changes restaurant order status
+      operationId: businessRestaurantOrderStatusChange
+      parameters:
+        - in: path
+          name: restaurantId
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: orderId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Order status changed.
+          content:
+            application/json:
+              schema:
+                type: object
+  /business/restaurants/{restaurantId}/reviews:
+    get:
+      tags: [Orders]
+      summary: Lists restaurant reviews for business area
+      operationId: businessRestaurantReviewsList
+      parameters:
+        - in: path
+          name: restaurantId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Restaurant reviews.
+          content:
+            application/json:
+              schema:
+                type: object
+  /business/restaurants/{restaurantId}/dashboard-summary:
+    get:
+      tags: [Orders]
+      summary: Returns restaurant dashboard summary
+      operationId: businessRestaurantDashboardSummary
+      parameters:
+        - in: path
+          name: restaurantId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Dashboard summary.
+          content:
+            application/json:
+              schema:
+                type: object
   /drivers:
     post:
       tags: [Drivers]
@@ -831,6 +1267,77 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/StatusOkResponse'
+  /admin/orders:
+    get:
+      tags: [Admin Orders]
+      summary: Lists orders for admin panel with filters and pagination
+      operationId: adminOrdersList
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [PENDENTE, EM_ANDAMENTO, ENTREGUE, CANCELADO]
+        - in: query
+          name: startDate
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: endDate
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: customer
+          schema:
+            type: string
+        - in: query
+          name: driver
+          schema:
+            type: string
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Orders list returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOrdersListResponse'
+  /admin/orders/{orderId}:
+    get:
+      tags: [Admin Orders]
+      summary: Returns one order snapshot for admin detail page
+      operationId: adminOrderById
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: orderId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Order snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOrderDetailResponse'
   /files/upload:
     post:
       tags: [Files]
@@ -1127,6 +1634,85 @@ components:
         updatedAt:
           type: string
           format: date-time
+    OrderPaymentMethod:
+      type: string
+      enum: [CREDIT_CARD, DEBIT_CARD, PIX, CASH]
+    OrderStatus:
+      type: string
+      enum: [PENDING]
+    CreateOrderItemRequest:
+      type: object
+      required: [menuItemId, quantity]
+      properties:
+        menuItemId:
+          type: string
+        quantity:
+          type: integer
+          minimum: 1
+        observation:
+          type: string
+          maxLength: 500
+    CreateOrderDeliveryAddressRequest:
+      type: object
+      required: [street, number, neighborhood, city, state, zipCode, lat, lng]
+      properties:
+        street:
+          type: string
+        number:
+          type: string
+        complement:
+          type: string
+        neighborhood:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        zipCode:
+          type: string
+        lat:
+          type: number
+          format: double
+        lng:
+          type: number
+          format: double
+    CreateOrderRequest:
+      type: object
+      required: [restaurantId, items, deliveryAddress, paymentMethod]
+      properties:
+        restaurantId:
+          type: string
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/CreateOrderItemRequest'
+        deliveryAddress:
+          $ref: '#/components/schemas/CreateOrderDeliveryAddressRequest'
+        paymentMethod:
+          $ref: '#/components/schemas/OrderPaymentMethod'
+    CreateOrderResponse:
+      type: object
+      required: [orderId, status]
+      properties:
+        orderId:
+          type: string
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+    HttpErrorResponse:
+      type: object
+      required: [statusCode, message, path, method]
+      properties:
+        statusCode:
+          type: integer
+        message:
+          type: string
+        path:
+          type: string
+        method:
+          type: string
+        correlationId:
+          type: string
     CreateDriverDraftRequest:
       type: object
       properties:
@@ -1282,6 +1868,134 @@ components:
           type: integer
         limit:
           type: integer
+    AdminOrderListStatus:
+      type: string
+      enum: [PENDENTE, EM_ANDAMENTO, ENTREGUE, CANCELADO]
+    AdminOrderListItem:
+      type: object
+      required: [id, customerName, customerEmail, driverName, status, totalAmount, createdAt]
+      properties:
+        id:
+          type: string
+        customerName:
+          type: string
+        customerEmail:
+          type: string
+          format: email
+        driverName:
+          type: string
+        status:
+          $ref: '#/components/schemas/AdminOrderListStatus'
+        totalAmount:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+    AdminOrdersListResponse:
+      type: object
+      required: [items, total, page, limit]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminOrderListItem'
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+    AdminOrderDetailItem:
+      type: object
+      required: [menuItemId, quantity, unitPrice, subtotal, name]
+      properties:
+        menuItemId:
+          type: string
+        quantity:
+          type: integer
+        observation:
+          type: string
+        unitPrice:
+          type: number
+        subtotal:
+          type: number
+        name:
+          type: string
+    AdminOrderStatusHistoryItem:
+      type: object
+      required: [status, changedAt]
+      properties:
+        from:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/AdminOrderListStatus'
+        changedAt:
+          type: string
+          format: date-time
+    AdminOrderDetailResponse:
+      type: object
+      required:
+        [
+          id,
+          publicCode,
+          customerName,
+          customerEmail,
+          customerPhone,
+          driverName,
+          status,
+          paymentMethod,
+          totalAmount,
+          subtotal,
+          deliveryFee,
+          createdAt,
+          updatedAt,
+          deliveryAddress,
+          items,
+          statusHistory,
+        ]
+      properties:
+        id:
+          type: string
+        publicCode:
+          type: string
+        customerName:
+          type: string
+        customerEmail:
+          type: string
+          format: email
+        customerPhone:
+          type: string
+        driverName:
+          type: string
+        status:
+          $ref: '#/components/schemas/AdminOrderListStatus'
+        paymentMethod:
+          $ref: '#/components/schemas/OrderPaymentMethod'
+        totalAmount:
+          type: number
+        subtotal:
+          type: number
+        deliveryFee:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        deliveryAddress:
+          type: object
+        orderNotes:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminOrderDetailItem'
+        statusHistory:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminOrderStatusHistoryItem'
     AdminDriverListItem:
       type: object
       required: [id, fullName, cpf, phone, status]
