@@ -1,16 +1,24 @@
 import { randomUUID } from 'crypto';
 import { Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model } from 'mongoose';
+import * as bcrypt from 'bcrypt';
 import { CreateOrderDto, CreateOrderResponseDto } from '../dto/create-order.dto';
 import { ChangeOrderStatusDto } from '../dto/order-status.dto';
 import { UpdateMenuItemDto, UpsertMenuItemDto } from '../dto/menu-item.dto';
 import { UpdateRestaurantMediaDto, UpdateRestaurantProfileDto } from '../dto/restaurants.dto';
 import { SubmitOrderReviewDto } from '../dto/reviews.dto';
+import {
+  BusinessAuthTokensDto,
+  BusinessLoginDto,
+  RegisterBusinessOwnerDto,
+} from '../dto/business-auth.dto';
 import { ORDER_STATUS_FLOW, OrderPaymentMethod, OrderStatus, RestaurantStatus } from '../../domain/order.enums';
 import { MenuItemDocument } from '../../infrastructure/mongo/schemas/menu-item.schema';
 import { OrderDocument } from '../../infrastructure/mongo/schemas/order.schema';
 import { RestaurantDocument } from '../../infrastructure/mongo/schemas/restaurant.schema';
+import { RestaurantAccountDocument } from '../../infrastructure/mongo/schemas/restaurant-account.schema';
 import { OrderCreatedEventPayload, OrdersGateway } from '../../presentation/websocket/orders.gateway';
 import { CustomerDocument } from '../../../customers/infrastructure/mongo/schemas/customer.schema';
 import { DriverDocument } from '../../../drivers/infrastructure/mongo/schemas/driver.schema';
@@ -46,12 +54,117 @@ export class OrdersService {
     private readonly restaurantModel: Model<RestaurantDocument>,
     @InjectModel(MenuItemDocument.name)
     private readonly menuItemModel: Model<MenuItemDocument>,
+    @InjectModel(RestaurantAccountDocument.name)
+    private readonly restaurantAccountModel: Model<RestaurantAccountDocument>,
     @InjectModel(CustomerDocument.name)
     private readonly customerModel: Model<CustomerDocument>,
     @InjectModel(DriverDocument.name)
     private readonly driverModel: Model<DriverDocument>,
+    private readonly jwtService: JwtService,
     private readonly ordersGateway: OrdersGateway,
   ) {}
+
+  async registerBusinessOwner(dto: RegisterBusinessOwnerDto): Promise<BusinessAuthTokensDto> {
+    if (dto.password !== dto.confirmPassword) {
+      throw new UnprocessableEntityException('password and confirmPassword must match');
+    }
+
+    const normalizedEmail = dto.email.trim().toLowerCase();
+    const normalizedPhone = dto.phone.replace(/\D/g, '');
+    const existing = await this.restaurantAccountModel.findOne({
+      $or: [{ email: normalizedEmail }, { phone: normalizedPhone }],
+    });
+    if (existing) {
+      throw new UnprocessableEntityException('business account already exists for this email or phone');
+    }
+
+    const restaurant = await this.restaurantModel.create({
+      name: dto.establishmentName.trim(),
+      ownerUserId: undefined,
+      document: dto.document.trim(),
+      contactEmail: normalizedEmail,
+      contactPhone: normalizedPhone,
+      address: {
+        cep: dto.address.cep,
+        street: dto.address.street,
+        number: dto.address.number,
+        neighborhood: dto.address.neighborhood,
+        city: dto.address.city,
+        state: dto.address.state.toUpperCase(),
+        complement: dto.address.complement,
+      },
+      delivery: {
+        estimatedDeliveryMinutes: dto.delivery.estimatedDeliveryMinutes,
+        estimatedTimeText: `${dto.delivery.estimatedDeliveryMinutes} min`,
+        baseFeeCents: dto.delivery.baseFeeCents,
+        minOrderValueCents: dto.delivery.minOrderValueCents,
+        radiusKm: dto.delivery.radiusKm,
+      },
+      operatingHours: {
+        openWeekdays: dto.operatingHours.openWeekdays,
+        openTime: dto.operatingHours.openTime,
+        closeTime: dto.operatingHours.closeTime,
+      },
+      status: RestaurantStatus.OPEN,
+      isActive: true,
+      ratingSum: 0,
+      ratingCount: 0,
+    });
+
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const account = await this.restaurantAccountModel.create({
+      restaurantId: restaurant.id,
+      fullName: dto.fullName.trim(),
+      email: normalizedEmail,
+      phone: normalizedPhone,
+      passwordHash,
+      role: 'OWNER',
+      isActive: true,
+    });
+
+    return this.signBusinessTokens(account.id, account.restaurantId);
+  }
+
+  async loginBusiness(dto: BusinessLoginDto): Promise<BusinessAuthTokensDto> {
+    const identifier = dto.identifier.trim().toLowerCase();
+    const phoneIdentifier = dto.identifier.replace(/\D/g, '');
+    const account = await this.restaurantAccountModel.findOne({
+      $or: [{ email: identifier }, { phone: phoneIdentifier }],
+      isActive: true,
+    });
+    if (!account) {
+      throw new NotFoundException('business account not found');
+    }
+
+    const passwordMatches = await bcrypt.compare(dto.password, account.passwordHash);
+    if (!passwordMatches) {
+      throw new UnprocessableEntityException('invalid credentials');
+    }
+    account.lastLoginAt = new Date();
+    await account.save();
+
+    return this.signBusinessTokens(account.id, account.restaurantId);
+  }
+
+  async getBusinessAuthMe(accessToken: string): Promise<{
+    userType: 'BUSINESS';
+    userId: string;
+    restaurantId: string;
+  }> {
+    const payload = await this.jwtService.verifyAsync<{
+      sub: string;
+      ut: 'BUSINESS';
+      restaurantId: string;
+    }>(accessToken);
+    if (!payload?.sub || payload.ut !== 'BUSINESS') {
+      throw new UnprocessableEntityException('invalid business token');
+    }
+    return {
+      userType: 'BUSINESS',
+      userId: payload.sub,
+      restaurantId: payload.restaurantId,
+    };
+  }
 
   async listAdminOrders(
     input: ListAdminOrdersInput,
@@ -870,5 +983,25 @@ export class OrdersService {
       return 'ENTREGUE';
     }
     return 'CANCELADO';
+  }
+
+  private async signBusinessTokens(userId: string, restaurantId: string): Promise<BusinessAuthTokensDto> {
+    const accessToken = await this.jwtService.signAsync(
+      { sub: userId, ut: 'BUSINESS', restaurantId },
+      { expiresIn: '15m' },
+    );
+    const refreshToken = await this.jwtService.signAsync(
+      { sub: userId, ut: 'BUSINESS', restaurantId, rt: true },
+      { expiresIn: '30d' },
+    );
+    return {
+      accessToken,
+      refreshToken,
+      tokenType: 'Bearer',
+      expiresInSeconds: 15 * 60,
+      userType: 'BUSINESS',
+      restaurantId,
+      userId,
+    };
   }
 }

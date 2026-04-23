@@ -461,6 +461,89 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
+  async loginCustomerByPhone(
+    phone: string,
+    password: string,
+    context: LoginContext,
+  ): Promise<{ accessToken: string; refreshToken: string }> {
+    const phoneNormalized = phone.replace(/\D/g, '');
+    const customer = await this.customerModel.findOne({ phoneNormalized });
+
+    if (!customer) {
+      await this.registerLoginAttempt({
+        userType: AuthUserType.CUSTOMER,
+        loginDocumentType: LoginDocumentType.EMAIL,
+        loginDocumentValue: phoneNormalized,
+        success: false,
+        reason: 'ACCOUNT_NOT_FOUND',
+        context,
+      });
+      throw new UnauthorizedException('invalid customer credentials');
+    }
+
+    if (customer.status !== CustomerStatus.ACTIVE) {
+      await this.registerLoginAttempt({
+        userType: AuthUserType.CUSTOMER,
+        loginDocumentType: LoginDocumentType.EMAIL,
+        loginDocumentValue: phoneNormalized,
+        success: false,
+        reason: 'CUSTOMER_BLOCKED',
+        context,
+        userId: customer.id,
+      });
+      throw new ForbiddenException('customer is blocked');
+    }
+
+    const passwordMatches = await bcrypt.compare(password, customer.passwordHash);
+    if (!passwordMatches) {
+      await this.registerLoginAttempt({
+        userType: AuthUserType.CUSTOMER,
+        loginDocumentType: LoginDocumentType.EMAIL,
+        loginDocumentValue: phoneNormalized,
+        success: false,
+        reason: 'INVALID_PASSWORD',
+        context,
+        userId: customer.id,
+      });
+      throw new UnauthorizedException('invalid customer credentials');
+    }
+
+    const accessToken = await this.jwtService.signAsync(
+      {
+        sub: customer.id,
+        ut: AuthUserType.CUSTOMER,
+        cs: customer.status,
+        scp: ['customers:profile:read', 'customers:profile:write', 'customers:addresses:write'],
+      },
+      {
+        secret: this.configService.get<string>('AUTH_ACCESS_TOKEN_SECRET') ?? 'local-dev-access-secret',
+        expiresIn: ACCESS_TOKEN_EXPIRY_SECONDS,
+      },
+    );
+
+    const refreshToken = randomBytes(48).toString('base64url');
+    await this.refreshTokenModel.create({
+      userId: customer.id,
+      userType: AuthUserType.CUSTOMER,
+      refreshTokenHash: this.hashToken(refreshToken),
+      userAgent: context.userAgent,
+      ip: context.ip,
+      expiresAt: new Date(Date.now() + REFRESH_TOKEN_EXPIRY_SECONDS * 1000),
+      createdAt: new Date(),
+    });
+    await this.registerLoginAttempt({
+      userType: AuthUserType.CUSTOMER,
+      loginDocumentType: LoginDocumentType.EMAIL,
+      loginDocumentValue: phoneNormalized,
+      success: true,
+      reason: 'SUCCESS',
+      context,
+      userId: customer.id,
+    });
+
+    return { accessToken, refreshToken };
+  }
+
   async refresh(
     dto: RefreshTokenDto,
     context: LoginContext,

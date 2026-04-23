@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   HttpCode,
   HttpStatus,
   Param,
@@ -16,12 +17,34 @@ import { ChangeOrderStatusDto } from '../../application/dto/order-status.dto';
 import { UpdateMenuItemDto, UpsertMenuItemDto } from '../../application/dto/menu-item.dto';
 import { SubmitOrderReviewDto } from '../../application/dto/reviews.dto';
 import { RestaurantsQueryDto, UpdateRestaurantMediaDto, UpdateRestaurantProfileDto } from '../../application/dto/restaurants.dto';
+import { BusinessLoginDto, RegisterBusinessOwnerDto } from '../../application/dto/business-auth.dto';
 import { OrdersService } from '../../application/services/orders.service';
 
 @ApiTags('Orders')
 @Controller()
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
+
+  @Post('/business/auth/register')
+  @ApiOperation({ summary: 'Registers business owner and restaurant' })
+  registerBusinessOwner(@Body() dto: RegisterBusinessOwnerDto) {
+    return this.ordersService.registerBusinessOwner(dto);
+  }
+
+  @Post('/business/auth/login')
+  @ApiOperation({ summary: 'Logs in business account by email/phone and password' })
+  loginBusiness(@Body() dto: BusinessLoginDto) {
+    return this.ordersService.loginBusiness(dto);
+  }
+
+  @Get('/business/auth/me')
+  @ApiOperation({ summary: 'Returns authenticated business account snapshot' })
+  getBusinessAuthMe(@Headers('authorization') authorization?: string) {
+    if (!authorization?.startsWith('Bearer ')) {
+      return { userType: null };
+    }
+    return this.ordersService.getBusinessAuthMe(authorization.substring('Bearer '.length));
+  }
 
   @Get('/restaurants')
   @ApiOperation({ summary: 'Lists active restaurants for marketplace catalog' })

@@ -7,6 +7,7 @@ describe('OrdersService', () => {
     orderModel: { create: jest.fn(), exists: jest.fn() },
     restaurantModel: { findById: jest.fn() },
     menuItemModel: { find: jest.fn() },
+    restaurantAccountModel: { findOne: jest.fn(), create: jest.fn() },
     customerModel: { find: jest.fn(), findById: jest.fn() },
     driverModel: { find: jest.fn(), findById: jest.fn() },
   });
@@ -43,7 +44,14 @@ describe('OrdersService', () => {
   });
 
   it('creates order with computed totals and emits websocket event', async () => {
-    const { orderModel, restaurantModel, menuItemModel, customerModel, driverModel } = makeModels();
+    const {
+      orderModel,
+      restaurantModel,
+      menuItemModel,
+      restaurantAccountModel,
+      customerModel,
+      driverModel,
+    } = makeModels();
     restaurantModel.findById.mockResolvedValue({ id: 'restaurant-1', status: RestaurantStatus.OPEN });
     menuItemModel.find.mockResolvedValue([
       {
@@ -74,8 +82,10 @@ describe('OrdersService', () => {
       orderModel as any,
       restaurantModel as any,
       menuItemModel as any,
+      restaurantAccountModel as any,
       customerModel as any,
       driverModel as any,
+      { signAsync: jest.fn() } as any,
       gateway as any,
     );
 
@@ -101,14 +111,23 @@ describe('OrdersService', () => {
   });
 
   it('returns 422 when restaurant is closed', async () => {
-    const { orderModel, restaurantModel, menuItemModel, customerModel, driverModel } = makeModels();
+    const {
+      orderModel,
+      restaurantModel,
+      menuItemModel,
+      restaurantAccountModel,
+      customerModel,
+      driverModel,
+    } = makeModels();
     restaurantModel.findById.mockResolvedValue({ id: 'restaurant-1', status: RestaurantStatus.CLOSED });
     const service = new OrdersService(
       orderModel as any,
       restaurantModel as any,
       menuItemModel as any,
+      restaurantAccountModel as any,
       customerModel as any,
       driverModel as any,
+      { signAsync: jest.fn() } as any,
       gateway as any,
     );
 
@@ -118,15 +137,24 @@ describe('OrdersService', () => {
   });
 
   it('returns 422 when at least one item is unavailable', async () => {
-    const { orderModel, restaurantModel, menuItemModel, customerModel, driverModel } = makeModels();
+    const {
+      orderModel,
+      restaurantModel,
+      menuItemModel,
+      restaurantAccountModel,
+      customerModel,
+      driverModel,
+    } = makeModels();
     restaurantModel.findById.mockResolvedValue({ id: 'restaurant-1', status: RestaurantStatus.OPEN });
     menuItemModel.find.mockResolvedValue([]);
     const service = new OrdersService(
       orderModel as any,
       restaurantModel as any,
       menuItemModel as any,
+      restaurantAccountModel as any,
       customerModel as any,
       driverModel as any,
+      { signAsync: jest.fn() } as any,
       gateway as any,
     );
 
@@ -136,14 +164,23 @@ describe('OrdersService', () => {
   });
 
   it('returns 404 when restaurant does not exist', async () => {
-    const { orderModel, restaurantModel, menuItemModel, customerModel, driverModel } = makeModels();
+    const {
+      orderModel,
+      restaurantModel,
+      menuItemModel,
+      restaurantAccountModel,
+      customerModel,
+      driverModel,
+    } = makeModels();
     restaurantModel.findById.mockResolvedValue(null);
     const service = new OrdersService(
       orderModel as any,
       restaurantModel as any,
       menuItemModel as any,
+      restaurantAccountModel as any,
       customerModel as any,
       driverModel as any,
+      { signAsync: jest.fn() } as any,
       gateway as any,
     );
 

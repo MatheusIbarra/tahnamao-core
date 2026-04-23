@@ -38,6 +38,18 @@ export class CustomerLoginDto {
   password!: string;
 }
 
+export class CustomerPhoneLoginDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  phone!: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  password!: string;
+}
+
 export class UpdateCustomerProfileDto {
   @ApiPropertyOptional()
   @IsOptional()

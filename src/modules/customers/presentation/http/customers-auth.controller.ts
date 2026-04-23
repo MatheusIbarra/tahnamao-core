@@ -8,7 +8,7 @@ import { AuthTokensDto, LogoutDto, RefreshTokenDto } from '../../../identity/app
 import { AuthUserType } from '../../../identity/domain/auth.enums';
 import { CurrentCustomer } from './decorators/current-customer.decorator';
 import { CustomerAuthGuard } from './guards/customer-auth.guard';
-import { CustomerLoginDto } from '../../application/dto/customers.dto';
+import { CustomerLoginDto, CustomerPhoneLoginDto } from '../../application/dto/customers.dto';
 
 interface HttpRequest {
   ip?: string;
@@ -26,6 +26,22 @@ export class CustomersAuthController {
   @ApiResponse({ status: 200, type: AuthTokensDto })
   async login(@Body() dto: CustomerLoginDto, @Req() request: HttpRequest): Promise<AuthTokensDto> {
     const tokens = await this.authService.loginCustomer(dto.email, dto.password, {
+      ip: request.ip,
+      userAgent: this.extractHeaderValue(request.headers['user-agent']),
+    });
+    return {
+      ...tokens,
+      tokenType: 'Bearer',
+      expiresInSeconds: 15 * 60,
+    };
+  }
+
+  @Post('login-phone')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Logs in a customer using phone and password' })
+  @ApiResponse({ status: 200, type: AuthTokensDto })
+  async loginByPhone(@Body() dto: CustomerPhoneLoginDto, @Req() request: HttpRequest): Promise<AuthTokensDto> {
+    const tokens = await this.authService.loginCustomerByPhone(dto.phone, dto.password, {
       ip: request.ip,
       userAgent: this.extractHeaderValue(request.headers['user-agent']),
     });
